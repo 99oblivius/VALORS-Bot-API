@@ -1,0 +1,49 @@
+version: '3.3'
+services:
+  valorsbotapi:
+    image: valorsbotapi
+    build: ./botapi
+    restart: always
+    ports:
+      - "9591:8080"
+    environment:
+      DATABASE_URL: postgresql+psycopg2://valorsuser:valorspassword@valorsdb:5432/valorsdb
+      REDIS_HOST: valorscache
+      REDIS_PORT: 6379
+    volumes:
+      - ./botapi/pipe:/hostpipe
+  
+  valorsbot:
+    image: valorsbot
+    build: ./bot
+    restart: always
+    environment:
+      DATABASE_URL: postgresql+asyncpg://valorsuser:valorspassword@valorsdb:5432/valorsdb
+      REDIS_HOST: valorscache
+      REDIS_PORT: 6379
+    depends_on:
+      - valorsdb
+    volumes:
+      - ./bot/discord_ValorsBot/alembic/versions:/bot/alembic/versions
+  
+  valorsdb:
+    image: postgres:latest
+    restart: always
+    environment:
+      POSTGRES_USER: valorsuser
+      POSTGRES_PASSWORD: valorspassword
+      POSTGRES_DB: valorsdb
+    volumes:
+      - ./db/ValorsDB:/var/lib/postgresql/data
+  
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    environment:
+      PGADMIN_DEFAULT_EMAIL: 99dark.oblivion99@gmail.com
+      PGADMIN_DEFAULT_PASSWORD: valorspassword
+    ports:
+      - "9592:80"
+  
+  valorscache:
+    image: redis:latest
+    restart: always

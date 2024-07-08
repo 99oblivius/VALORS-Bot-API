@@ -1,0 +1,110 @@
+Already on 'main'
+Your branch is up to date with 'origin/main'.
+Already up to date.
+valorsdb uses an image, skipping
+pgadmin uses an image, skipping
+valorscache uses an image, skipping
+Building valorsbotapi ... 
+Building valorsbot    ... 
+Building valorsbotapi
+Building valorsbot
+Step 1/12 : FROM python:3.12
+ ---> ab363ab21d7b
+Step 2/12 : ADD https://astral.sh/uv/install.sh /install.sh
+Step 1/11 : FROM python:3.9-slim
+ ---> 462828d2b59e
+Step 2/11 : WORKDIR /app
+ ---> Using cache
+ ---> 9638aad9745e
+Step 3/11 : VOLUME /hostpipe
+ ---> Using cache
+ ---> e61a89f5dab4
+Step 4/11 : COPY requirements.txt .
+ ---> Using cache
+ ---> 924506b43bce
+Step 5/11 : RUN pip install --no-cache-dir -r requirements.txt
+ ---> Using cache
+ ---> 21d3fb9441c8
+Step 6/11 : COPY . .
+
+
+ ---> Using cache
+ ---> 8402bb6ab961
+Step 3/12 : RUN chmod -R 655 /install.sh && /install.sh && rm /install.sh
+ ---> Using cache
+ ---> efb53d9b8e9b
+Step 4/12 : ENV PYTHONDONTWRITEBYTECODE=1
+ ---> Using cache
+ ---> 1b018539ddf2
+Step 5/12 : ENV PYTHONUNBUFFERED=1
+ ---> Using cache
+ ---> 16340d43d3a2
+Step 6/12 : WORKDIR /bot
+ ---> Using cache
+ ---> 3c6d94b5ae23
+Step 7/12 : RUN pip install uv
+ ---> Using cache
+ ---> dab759411e63
+Step 8/12 : COPY discord_ValorsBot/requirements.txt requirements.txt
+ ---> Using cache
+ ---> 227ef80e5f83
+Step 9/12 : RUN /root/.cargo/bin/uv pip install --system --no-cache -r requirements.txt
+ ---> Using cache
+ ---> 147fc0a302a8
+Step 10/12 : COPY discord_ValorsBot/ .
+ ---> d69b10672c0f
+Step 11/12 : CMD ["python", "./src/main.py"]
+ ---> Running in 11bb8c38c16b
+ ---> 1bad54901005
+Step 7/11 : EXPOSE 5000
+ ---> Removed intermediate container 11bb8c38c16b
+ ---> 0bd043beee83
+Step 12/12 : RUN python -m nextcord -v
+ ---> Running in 22ab630405c0
+ ---> Running in ba812a800512
+ ---> Removed intermediate container 22ab630405c0
+ ---> 9e062f03350e
+Step 8/11 : ENV FLASK_APP=app.py
+ ---> Running in a1e9fb01f2ee
+ ---> Removed intermediate container a1e9fb01f2ee
+ ---> e2f14d64da34
+Step 9/11 : ENV FLASK_ENV=production
+ ---> Running in 49968e7f4022
+ ---> Removed intermediate container 49968e7f4022
+ ---> 1f7d24d8a01a
+Step 10/11 : ENV FLASK_RUN_HOST=0.0.0.0
+ ---> Running in ecd857f0338e
+ ---> Removed intermediate container ecd857f0338e
+ ---> 8fa306f108f5
+Step 11/11 : CMD ["flask", "run"]
+ ---> Running in 885c2b599087
+ ---> Removed intermediate container 885c2b599087
+ ---> 34e9a9b3d72f
+
+Successfully built 34e9a9b3d72f
+Successfully tagged valorsbotapi:latest
+[2A[2KBuilding valorsbotapi ... [32mdone[0m[2B- Python v3.12.4-final
+- nextcord v2.6.0-final
+- aiohttp v3.9.5
+- system info: Linux 5.4.0-186-generic #206-Ubuntu SMP Fri Apr 26 12:31:10 UTC 2024
+ ---> Removed intermediate container ba812a800512
+ ---> c36308fc5cf6
+
+Successfully built c36308fc5cf6
+Successfully tagged valorsbot:latest
+[1A[2KBuilding valorsbot    ... [32mdone[0m[1BFound orphan containers (valorsleague_postgresql_1) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up.
+valorsleague_valorscache_1 is up-to-date
+valorsleague_pgadmin_1 is up-to-date
+Recreating valorsleague_valorsbotapi_1 ... 
+valorsleague_valorsdb_1 is up-to-date
+Recreating valorsleague_valorsbot_1    ... 
+[1A[2KRecreating valorsleague_valorsbot_1    ... [32mdone[0m[1B[2A[2KRecreating valorsleague_valorsbotapi_1 ... [32mdone[0m[2BDeleted: sha256:81317601a1cbe056c14b81a9f2d51ca2cfd0b0e27d1af75318c023e949e7f8af
+Deleted: sha256:13780beb06739fafc0a29c88f7c7ff66df6ae190d207f9aa304ea0f9009c731d
+Deleted: sha256:fabeac87c8d1bf11cb04c03540bff2d347c777df4760370d2766b4905e583fa5
+Deleted: sha256:bc8723a9531e633e852969e35e317f714fe728f19707c6e8328bf07f3b051057
+Deleted: sha256:fd01f5c8c319760e7a25bd8e773bd0a63330b397f26a18f2536ca9d4f5fd272a
+Deleted: sha256:1beb82a4b38b9c9feefed1b480f48d3467e815a03b24aeec9a71cb4088fe51be
+Deleted: sha256:09e6d857bb356774fb5109d87232bdb0a2f9bad711216e82591627ba521b3384
+Deleted: sha256:9532ca7ee28951ca48f392c358eb86abbb8549f9b64988f19e22fe529e31c54f
+Deleted: sha256:f52c32c0c6ec079bfce9d7fcd0ab8b2837300b9df6fb1d496d433e35c2689a0a
+Deleted: sha256:12171b56866eef1e503c32f219db834073e6a97a822ee45b99768f998e8740f3
