@@ -7,8 +7,11 @@ An API used for authentication and maintenance of VALORS-Match-Making-Bot
 .
 ├── bot
 │   ├── VALORS-Match-Making-Bot
+│   │   └── src
+|   │       └── .env
 │   └── Dockerfile
 ├── VALORS-Bot-API
+│   ├── .env
 │   ├── Dockerfile
 │   ├── execpipe.sh
 │   ├── last_update.txt
