@@ -1,0 +1,3 @@
+[submodule "bot/VALORS-Match-Making-Bot"]
+	path = bot/VALORS-Match-Making-Bot
+	url = https://github.com/99oblivius/VALORS-Match-Making-Bot.git
