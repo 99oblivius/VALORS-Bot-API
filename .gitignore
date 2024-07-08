@@ -1,4 +1,6 @@
 db/
+dozzle-data/
+pgadmin-data/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
