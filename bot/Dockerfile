@@ -11,7 +11,7 @@ RUN pip install uv
 COPY VALORS-Match-Making-Bot/requirements.txt requirements.txt
 RUN /root/.cargo/bin/uv pip install --system --no-cache -r requirements.txt
 
-COPY discord_ValorsBot/ .
+COPY VALORS-Match-Making-Bot/ .
 
 CMD ["python", "./src/main.py"]
 RUN python -m nextcord -v
