@@ -11,7 +11,7 @@ services:
       REDIS_HOST: valorscache
       REDIS_PORT: 6379
     volumes:
-      - ./botapi/pipe:/hostpipe
+      - ./VALORS-Bot-API/pipe:/hostpipe
   
   valorsbot:
     image: valorsbot
@@ -24,7 +24,7 @@ services:
     depends_on:
       - valorsdb
     volumes:
-      - ./bot/discord_ValorsBot/alembic/versions:/bot/alembic/versions
+      - ./bot/VALORS-Match-Making-Bot/alembic/versions:/bot/alembic/versions
   
   valorsdb:
     image: postgres:latest
