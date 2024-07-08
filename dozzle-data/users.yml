@@ -1,0 +1,6 @@
+users:
+  oblivius:
+    name: "Livia"
+    # Just sha-256 which can be computed with "echo -n password | shasum -a 256"
+    password: "74f7ce5a4b29cdf4c1c9ae64a865af815bd324bb2c8897b569348262f405a3a2"
+    email: 99dark.oblivion99@gmail.com
