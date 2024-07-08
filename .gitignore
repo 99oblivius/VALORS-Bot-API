@@ -2,6 +2,8 @@ db/
 dozzle-data/
 pgadmin-data/
 
+log.txt
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
