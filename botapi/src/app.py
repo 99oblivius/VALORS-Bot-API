@@ -12,7 +12,17 @@ from dotenv import load_dotenv
 from enum import Enum
 import logging
 
-# Load environment variables
+
+# ENV KEYS:
+#  SCHEMA_UPDATE_API_KEY
+#  UPDATE_API_KEY
+#  SECRET_KEY
+#  
+#  REDIS_HOST
+#  REDIS_PORT
+#  DATABASE_URL
+
+
 load_dotenv()
 
 app = Flask(__name__)
@@ -20,7 +30,6 @@ app.secret_key = os.getenv('SECRET_KEY')
 
 app.logger.setLevel(logging.INFO)
 
-# Config variables
 REDIS_HOST = os.getenv('REDIS_HOST', 'localhost')
 REDIS_PORT = int(os.getenv('REDIS_PORT', 6379))
 DATABASE_URL = os.getenv('DATABASE_URL')
@@ -28,16 +37,14 @@ DATABASE_URL = os.getenv('DATABASE_URL')
 DISCORD_BOT_TOKEN = os.getenv('DISCORD_BOT_TOKEN')
 DISCORD_API_ENDPOINT = 'https://discord.com/api/v10'
 
-# Redis configuration
 redis_db = redis.StrictRedis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
 
-# Database configuration
 engine = create_engine(DATABASE_URL)
 Session = sessionmaker(bind=engine)
 session = Session()
 
-# SQLAlchemy base model
 Base = declarative_base()
+
 
 class Platform(Enum):
     STEAM = "steam"
