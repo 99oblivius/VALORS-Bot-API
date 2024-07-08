@@ -1,7 +1,6 @@
 from flask import Flask, request, jsonify, redirect, render_template_string, url_for
 from sqlalchemy import create_engine, Column, Integer, String, BigInteger, UniqueConstraint, Enum as sq_Enum
 from sqlalchemy.orm import sessionmaker, declarative_base
-import subprocess
 from steam.steamid import SteamID
 import os
 import hmac
@@ -11,7 +10,7 @@ import redis
 from dotenv import load_dotenv
 from enum import Enum
 import logging
-from logger import Logger as log, VariableLog
+from logger import Logger as log
 
 # ENV KEYS:
 #  SCHEMA_UPDATE_API_KEY
