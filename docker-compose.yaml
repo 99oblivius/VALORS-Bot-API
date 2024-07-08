@@ -2,7 +2,7 @@ version: '3.3'
 services:
   valorsbotapi:
     image: valorsbotapi
-    build: ./botapi
+    build: ./VALORS-Bot-API
     restart: always
     ports:
       - "9591:8080"
