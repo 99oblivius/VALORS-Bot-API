@@ -1,9 +1,9 @@
 #!/bin/bash
 set -e
 
-cd /srv/ValorsLeague/bot/discord_ValorsBot
+cd /srv/ValorsLeague/bot/VALORS-Match-Making-Bot
 git checkout main
-git pull
+git pull origin main
 cd ../..
 
 OLD_IMAGE_ID=$(docker images -q valorsbot:latest)
@@ -18,4 +18,4 @@ if [ ! -z "$OLD_IMAGE_ID" ]; then
     fi
 fi
 
-date >> /srv/ValorsLeague/botapi/last_update.txt
+date >> /srv/ValorsLeague/VALORS-Bot-API/last_update.txt

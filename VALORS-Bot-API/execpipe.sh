@@ -1,2 +1,2 @@
 #!/bin/bash
-while true; do eval "$(cat /srv/ValorsLeague/botapi/pipe/apipipe)" &> /srv/ValorsLeague/botapi/pipe/log.txt; done
+while true; do eval "$(cat /srv/ValorsLeague/VALORS-Bot-API/pipe/apipipe)" &> /srv/ValorsLeague/VALORS-Bot-API/pipe/log.txt; done

@@ -3,6 +3,7 @@ from sqlalchemy import create_engine, Column, Integer, String, BigInteger, Uniqu
 from sqlalchemy.orm import sessionmaker, declarative_base
 from steam.steamid import SteamID
 import os
+import select
 import hmac
 import requests
 from datetime import datetime, timezone
@@ -88,38 +89,41 @@ def add_discord_role(guild_id, user_id, role_id):
         log.error(f"Failed to add role {role_id} to user {user_id} in guild {guild_id}. Status code: {response.status_code}, Response: {response.text}")
         return False
 
+def write_to_pipe_with_timeout(pipe_path, message, timeout=5):
+    try:
+        pipe_fd = os.open(pipe_path, os.O_WRONLY | os.O_NONBLOCK)
+        _, ready_to_write, _ = select.select([], [pipe_fd], [], timeout)
+        if ready_to_write:
+            os.write(pipe_fd, message.encode())
+            os.close(pipe_fd)
+            return True
+        else:
+            os.close(pipe_fd)
+            return False
+    except OSError as e:
+        log.error(f"Error writing to pipe: {str(e)}")
+        return False
+
 @app.route('/update', methods=['POST'])
 def update():
     auth_header = request.headers.get('Authorization')
     if not auth_header:
         return jsonify({'error': 'Missing Authorization header'}), 401
     
-    update_type = request.args.get('type', 'regular')
+    update_type = request.args.get('type', None)
     
-    if update_type == 'schema':
-        if not hmac.compare_digest(auth_header, os.getenv('SCHEMA_UPDATE_API_KEY', '')):
-            log.error(f"SCHEMA_UPDATE authentication failed")
-            return jsonify({'error': 'Invalid token for schema update'}), 401
-        
-        try:
-            with open('/hostpipe/apipipe', 'w') as pipe:
-                pipe.write('/srv/ValorsLeague/botapi/schema-update.sh')
-            log.info(f"SCHEMA_UPDATE called")
-            return jsonify({'status': 'Schema update initiated successfully'}), 200
-        except IOError:
-            log.error(f"SCHEMA_UPDATE pipe failed")
-            return jsonify({'error': 'Failed to write to pipe', 'details': str(e)}), 500
-    
-    elif update_type == 'regular':
+    if update_type == 'regular':
         if not hmac.compare_digest(auth_header, os.getenv('UPDATE_API_KEY', '')):
             log.error(f"UPDATE authentication failed")
             return jsonify({'error': 'Invalid token for regular update'}), 401
         
         try:
-            with open('/hostpipe/apipipe', 'w') as pipe:
-                pipe.write('/srv/ValorsLeague/botapi/update.sh')
-            log.info(f"UPDATE called")
-            return jsonify({'status': 'Update initiated successfully'}), 200
+            if write_to_pipe_with_timeout('/hostpipe/apipipe', '/srv/ValorsLeague/VALORS-Bot-API/update.sh'):
+                log.info("UPDATE called")
+                return jsonify({'status': 'Update initiated successfully'}), 200
+            else:
+                log.error("UPDATE pipe write timed out")
+                return jsonify({'error': 'Failed to write to pipe (timeout)'}), 500
         except IOError as e:
             log.error(f"UPDATE pipe failed")
             return jsonify({'error': 'Failed to write to pipe', 'details': str(e)}), 500
