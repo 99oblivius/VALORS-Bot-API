@@ -1,5 +1,5 @@
 # VALORS-Bot-API
-An API used for authentication and maintenance of VALORS-Match-Making-Bot
+The backend for the deployment and services tied to https://github.com/99oblivius/VALORS-Match-Making-Bot
 
 
 ## Project Architecture
@@ -8,7 +8,7 @@ An API used for authentication and maintenance of VALORS-Match-Making-Bot
 ├── bot
 │   ├── VALORS-Match-Making-Bot
 │   │   └── src
-|   │       └── .env
+│   │       └── .env
 │   └── Dockerfile
 ├── VALORS-Bot-API
 │   ├── .env
