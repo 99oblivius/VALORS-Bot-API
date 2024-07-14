@@ -22,6 +22,8 @@ NEW_IMAGE_ID=$(docker images -q valorsbot:latest)
 if [ "$OLD_IMAGE_ID" != "$NEW_IMAGE_ID" ] && [ ! -z "$OLD_IMAGE_ID" ]; then
     echo "Removing old valorsbot image..."
     docker rmi $OLD_IMAGE_ID || true
+else
+    docker-compose restart valorsbot
 fi
 
 echo "valorsbot forcibly updated successfully."
