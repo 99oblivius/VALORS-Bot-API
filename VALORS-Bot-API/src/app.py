@@ -127,7 +127,21 @@ def update():
         except IOError as e:
             log.error(f"UPDATE pipe failed")
             return jsonify({'error': 'Failed to write to pipe', 'details': str(e)}), 500
-    
+    elif update_type == 'force':
+        if not hmac.compare_digest(auth_header, os.getenv('UPDATE_API_KEY', '')):
+            log.error(f"FORCE UPDATE authentication failed")
+            return jsonify({'error': 'Invalid token for force update'}), 401
+        
+        try:
+            if write_to_pipe_with_timeout('/hostpipe/apipipe', '/srv/ValorsLeague/VALORS-Bot-API/force_update.sh'):
+                log.info("FORCE UPDATE called")
+                return jsonify({'status': 'Update initiated successfully'}), 200
+            else:
+                log.error("FORCE UPDATE pipe write timed out")
+                return jsonify({'error': 'Failed to write to pipe (timeout)'}), 500
+        except IOError as e:
+            log.error(f"FORCE UPDATE pipe failed")
+            return jsonify({'error': 'Failed to write to pipe', 'details': str(e)}), 500
     else:
         log.error(f"/update invalid")
         return jsonify({'error': 'Invalid update type'}), 400
