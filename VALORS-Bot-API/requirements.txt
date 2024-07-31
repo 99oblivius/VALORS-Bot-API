@@ -5,3 +5,4 @@ redis
 sqlalchemy
 steam
 waitress
+flask-cors

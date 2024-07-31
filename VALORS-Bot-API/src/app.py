@@ -1,10 +1,12 @@
 from flask import Flask, request, jsonify, redirect, render_template_string, url_for
+from flask_cors import CORS, cross_origin
 from sqlalchemy import create_engine, Column, Integer, String, BigInteger, UniqueConstraint, Enum as sq_Enum
 from sqlalchemy.orm import sessionmaker, declarative_base
 from steam.steamid import SteamID
 import os
 import select
 import hmac
+import random
 import time
 import errno
 import requests
@@ -28,6 +30,11 @@ from logger import Logger as log
 load_dotenv()
 
 app = Flask(__name__)
+CORS(app, resources={r"/*": {
+    "origins": ["https://valorsleague.org"],
+    "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    "allow_headers": ["Content-Type", "Authorization"]
+}})
 app.secret_key = os.getenv('SECRET_KEY')
 
 app.logger.setLevel(logging.INFO)
@@ -266,3 +273,22 @@ def verified():
         response_page = file.read()
 
     return render_template_string(response_page, steam_id=steam_id, discord_uuid=discord_uuid, failed=failed, error=error, already_verified=already_verified)
+
+
+@app.route('/data')
+@cross_origin(origins=["http://localhost:5173"])
+def data():
+    request_info = {
+        "method": request.method,
+        "url": request.url,
+        "headers": dict(request.headers),
+        "origin": request.headers.get("Origin"),
+        "remote_addr": request.remote_addr,
+        "user_agent": request.user_agent.string
+    }
+    log.info(f"Data request received: {request_info}")
+    response_data = {"number": random.randrange(100)}
+    response = jsonify(response_data)
+    log.info(f"Response headers: {dict(response.headers)}")
+    
+    return response, 200
