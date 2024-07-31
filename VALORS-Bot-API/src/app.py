@@ -118,7 +118,7 @@ def update():
             return jsonify({'error': 'Invalid token for regular update'}), 401
         
         try:
-            if write_to_pipe_with_timeout('/hostpipe/apipipe', '/srv/ValorsLeague/VALORS-Bot-API/update.sh'):
+            if write_to_pipe_with_timeout('/hostpipe/apipipe', 'update.sh'):
                 log.info("UPDATE called")
                 return jsonify({'status': 'Update initiated successfully'}), 200
             else:
@@ -133,7 +133,7 @@ def update():
             return jsonify({'error': 'Invalid token for force update'}), 401
         
         try:
-            if write_to_pipe_with_timeout('/hostpipe/apipipe', '/srv/ValorsLeague/VALORS-Bot-API/force_update.sh'):
+            if write_to_pipe_with_timeout('/hostpipe/apipipe', 'force_update.sh'):
                 log.info("FORCE UPDATE called")
                 return jsonify({'status': 'Update initiated successfully'}), 200
             else:
