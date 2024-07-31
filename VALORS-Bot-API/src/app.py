@@ -5,6 +5,8 @@ from steam.steamid import SteamID
 import os
 import select
 import hmac
+import time
+import errno
 import requests
 from datetime import datetime, timezone
 import redis
@@ -90,19 +92,33 @@ def add_discord_role(guild_id, user_id, role_id):
         return False
 
 def write_to_pipe_with_timeout(pipe_path, message, timeout=5):
-    try:
-        pipe_fd = os.open(pipe_path, os.O_WRONLY | os.O_NONBLOCK)
-        _, ready_to_write, _ = select.select([], [pipe_fd], [], timeout)
-        if ready_to_write:
-            os.write(pipe_fd, message.encode())
-            os.close(pipe_fd)
-            return True
-        else:
-            os.close(pipe_fd)
-            return False
-    except OSError as e:
-        log.error(f"Error writing to pipe: {str(e)}")
-        return False
+    start_time = time.time()
+    while time.time() - start_time < timeout:
+        try:
+            pipe_fd = os.open(pipe_path, os.O_WRONLY)
+            try:
+                os.set_blocking(pipe_fd, False)
+                _, ready_to_write, _ = select.select([], [pipe_fd], [], timeout)
+                if ready_to_write:
+                    encoded_message = (message + '\n').encode('utf-8')
+                    bytes_written = os.write(pipe_fd, encoded_message)
+                    if bytes_written == len(encoded_message):
+                        log.info(f"Wrote to pipe: {message}")
+                        return True
+                    log.warning(f"Partial write: {bytes_written}/{len(encoded_message)} bytes")
+                else:
+                    log.warning("Pipe not ready within timeout")
+            finally:
+                os.close(pipe_fd)
+        except OSError as e:
+            if e.errno in (errno.ENXIO, errno.EINTR):
+                log.warning(f"Retrying: {str(e)}")
+                time.sleep(0.1)
+            else:
+                log.error(f"Pipe error: {str(e)}")
+                return False
+    log.error("Pipe write failed after attempts")
+    return False
 
 @app.route('/update', methods=['POST'])
 def update():
@@ -112,39 +128,21 @@ def update():
     
     update_type = request.args.get('type', None)
     
-    if update_type == 'regular':
-        if not hmac.compare_digest(auth_header, os.getenv('UPDATE_API_KEY', '')):
-            log.error(f"UPDATE authentication failed")
-            return jsonify({'error': 'Invalid token for regular update'}), 401
-        
-        try:
-            if write_to_pipe_with_timeout('/hostpipe/apipipe', 'update.sh'):
-                log.info("UPDATE called")
-                return jsonify({'status': 'Update initiated successfully'}), 200
-            else:
-                log.error("UPDATE pipe write timed out")
-                return jsonify({'error': 'Failed to write to pipe (timeout)'}), 500
-        except IOError as e:
-            log.error(f"UPDATE pipe failed")
-            return jsonify({'error': 'Failed to write to pipe', 'details': str(e)}), 500
-    elif update_type == 'force':
-        if not hmac.compare_digest(auth_header, os.getenv('UPDATE_API_KEY', '')):
-            log.error(f"FORCE UPDATE authentication failed")
-            return jsonify({'error': 'Invalid token for force update'}), 401
-        
-        try:
-            if write_to_pipe_with_timeout('/hostpipe/apipipe', 'force_update.sh'):
-                log.info("FORCE UPDATE called")
-                return jsonify({'status': 'Update initiated successfully'}), 200
-            else:
-                log.error("FORCE UPDATE pipe write timed out")
-                return jsonify({'error': 'Failed to write to pipe (timeout)'}), 500
-        except IOError as e:
-            log.error(f"FORCE UPDATE pipe failed")
-            return jsonify({'error': 'Failed to write to pipe', 'details': str(e)}), 500
-    else:
+    if update_type not in ['regular', 'force']:
         log.error(f"/update invalid")
         return jsonify({'error': 'Invalid update type'}), 400
+
+    if not hmac.compare_digest(auth_header, os.getenv('UPDATE_API_KEY', '')):
+        log.error(f"{update_type.upper()} UPDATE authentication failed")
+        return jsonify({'error': f'Invalid token for {update_type} update'}), 401
+    
+    script = 'update.sh' if update_type == 'regular' else 'force_update.sh'
+    if write_to_pipe_with_timeout('/hostpipe/apipipe', script):
+        log.info(f"{update_type.upper()} UPDATE called successfully")
+        return jsonify({'status': f'{update_type.capitalize()} Update initiated successfully'}), 200
+    
+    log.error(f"{update_type.upper()} UPDATE failed")
+    return jsonify({'error': f'Failed to initiate {update_type} update'}), 500
 
 @app.route('/auth/<platform>/<token>')
 def auth(platform, token):
