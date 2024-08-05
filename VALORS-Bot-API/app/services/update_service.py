@@ -3,6 +3,7 @@ import hmac
 from flask import jsonify
 from ..utils.pipe_utils import write_to_pipe_with_timeout
 from ..utils.logger import log
+from config import UPDATE_API_KEY
 
 def handle_update(app, request):
     auth_header = request.headers.get('Authorization')
@@ -15,7 +16,7 @@ def handle_update(app, request):
         log.error(f"/update invalid")
         return jsonify({'error': 'Invalid update type'}), 400
 
-    if not hmac.compare_digest(auth_header, os.getenv('UPDATE_API_KEY', '')):
+    if not hmac.compare_digest(auth_header, UPDATE_API_KEY):
         log.error(f"{update_type.upper()} UPDATE authentication failed")
         return jsonify({'error': f'Invalid token for {update_type} update'}), 401
     
