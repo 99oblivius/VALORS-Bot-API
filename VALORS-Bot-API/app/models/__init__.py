@@ -1,7 +1,21 @@
-from sqlalchemy import create_engine, Column, Integer, String, BigInteger, UniqueConstraint, Enum as sq_Enum
+from sqlalchemy import (
+    create_engine, 
+    Column, 
+    Integer, 
+    String, 
+    BigInteger, 
+    UniqueConstraint, 
+    Enum as sq_Enum
+)
 from sqlalchemy.orm import sessionmaker, declarative_base
 from enum import Enum
 from config import DATABASE_URL
+
+def init_db(app):
+    engine = create_engine(DATABASE_URL)
+    Base.metadata.create_all(engine)
+    app.session = sessionmaker(bind=engine)()
+
 
 Base = declarative_base()
 
@@ -27,8 +41,3 @@ class BotSettings(Base):
 
     guild_id = Column(BigInteger, primary_key=True, nullable=False)
     mm_verified_role = Column(BigInteger)
-
-def init_db(app):
-    engine = create_engine(DATABASE_URL)
-    Base.metadata.create_all(engine)
-    app.session = sessionmaker(bind=engine)()

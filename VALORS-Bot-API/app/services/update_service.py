@@ -1,4 +1,3 @@
-import os
 import hmac
 from flask import jsonify
 from ..utils.pipe_utils import write_to_pipe_with_timeout
