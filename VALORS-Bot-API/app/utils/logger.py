@@ -148,3 +148,6 @@ class Logger:
         if cls._log_level > cls.CRITICAL:
             return
         cls._log('CRITICAL', message)
+
+
+log = Logger()

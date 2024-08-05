@@ -36,17 +36,17 @@ services:
     volumes:
       - ./db/ValorsDB:/var/lib/postgresql/data
   
-  # pgadmin:
-  #   image: dpage/pgadmin4:latest
-  #   container_name: pgadmin4_valors
-  #   restart: always
-  #   environment:
-  #     PGADMIN_DEFAULT_EMAIL: 99dark.oblivion99@gmail.com
-  #     PGADMIN_DEFAULT_PASSWORD: valorspassword
-  #   ports:
-  #     - "9592:80"
-  #   volumes:
-  #     - ./pgadmin-data:/var/lib/pgadmin
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: pgadmin4_valors
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: 99dark.oblivion99@gmail.com
+      PGADMIN_DEFAULT_PASSWORD: valorspassword
+    ports:
+      - "9592:80"
+    volumes:
+      - ./pgadmin-data:/var/lib/pgadmin
   
   dozzle:
     image: amir20/dozzle:latest
