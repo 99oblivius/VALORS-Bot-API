@@ -1,23 +1,32 @@
-from flask import request
+from fastapi import APIRouter, Request, Depends
+from sqlalchemy.orm import Session
 from ..services import auth_service, update_service, data_service
+from ..models import init_db
+
+router = APIRouter()
+
+def get_db(request: Request):
+    return request.app.state.db
 
 def init_routes(app):
-    @app.route('/update', methods=['POST'])
-    def update():
-        return update_service.handle_update(app, request)
+    @router.post('/update')
+    async def update(request: Request):
+        return await update_service.handle_update(request)
 
-    @app.route('/auth/<platform>/<token>')
-    def auth(platform, token):
-        return auth_service.handle_auth(app, platform, token)
+    @router.get('/auth/{platform}/{token}')
+    async def auth(platform: str, token: str, request: Request):
+        return await auth_service.handle_auth(request, platform, token)
 
-    @app.route('/verify')
-    def verify():
-        return auth_service.handle_verify(app, request)
+    @router.get('/verify')
+    async def verify(request: Request, db: Session = Depends(get_db)):
+        return await auth_service.handle_verify(request, db)
 
-    @app.route('/verified')
-    def verified():
-        return auth_service.handle_verified(request)
+    @router.get('/verified')
+    async def verified(request: Request):
+        return await auth_service.handle_verified(request)
 
-    @app.route('/data')
-    def data():
-        return data_service.handle_data(request)
+    @router.get('/data')
+    async def data(request: Request):
+        return await data_service.handle_data(request)
+
+    app.include_router(router)

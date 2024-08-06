@@ -1,8 +1,9 @@
-Flask
+fastapi
+uvicorn
 psycopg2-binary
 python-dotenv
-redis
+aioredis
 sqlalchemy
 steam
-waitress
-flask-cors
+httpx
+jinja2

@@ -2,8 +2,7 @@ import inspect
 import sys
 from datetime import datetime
 from pprint import pprint
-from config import LOG_LEVEL
-
+from config import config
 
 class VariableLog:
     variables_to_value = {}
@@ -13,11 +12,7 @@ class VariableLog:
         if Logger.get_level() > Logger.DEBUG: return
         
         frame = inspect.currentframe().f_back
-        variable_name = None
-        for name, val in frame.f_locals.items():
-            if val is value:
-                variable_name = name
-                break
+        variable_name = next((name for name, val in frame.f_locals.items() if val is value), None)
         
         if variable_name is None:
             Logger.debug(f"{message}{' ' if message else ''}Value => {value}")
@@ -29,7 +24,7 @@ class VariableLog:
 
 
 class Logger:
-    _log_level = LOG_LEVEL
+    _log_level = config.LOG_LEVEL
 
     DEBUG = 1
     INFO = 2
@@ -44,7 +39,7 @@ class Logger:
         'ERROR': '\033[91m',    # Red
         'CRITICAL': '\033[95m', # Magenta
         'RESET': '\033[0m',     # Reset color
-        'BG': '\033[30;46m', #
+        'BG': '\033[30;46m',    #
         'GRAY': '\033[0;90m',   # Bold gray
         'PURPLE': '\033[0;35m'  # Purple
     }

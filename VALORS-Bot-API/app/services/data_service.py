@@ -1,14 +1,17 @@
 import random
-from flask import jsonify
+from fastapi import Request
+from fastapi.responses import JSONResponse
+from ..utils.logger import log
 
-def handle_data(request):
+async def handle_data(request: Request):
     request_info = {
         "method": request.method,
-        "url": request.url,
+        "url": str(request.url),
         "headers": dict(request.headers),
         "origin": request.headers.get("Origin"),
-        "remote_addr": request.remote_addr,
-        "user_agent": request.user_agent.string
+        "client": request.client.host,
+        "user_agent": request.headers.get("User-Agent")
     }
+    log.info(f"Data request received: {request_info}")
     response_data = {"number": random.randrange(100)}
-    return jsonify(response_data), 200
+    return JSONResponse(content=response_data)

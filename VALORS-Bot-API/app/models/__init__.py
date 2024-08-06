@@ -9,13 +9,12 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import sessionmaker, declarative_base
 from enum import Enum
-from config import DATABASE_URL
+from config import config
 
 def init_db(app):
-    engine = create_engine(DATABASE_URL)
+    engine = create_engine(config.DATABASE_URL)
     Base.metadata.create_all(engine)
-    app.session = sessionmaker(bind=engine)()
-
+    app.state.db = sessionmaker(bind=engine)()
 
 Base = declarative_base()
 

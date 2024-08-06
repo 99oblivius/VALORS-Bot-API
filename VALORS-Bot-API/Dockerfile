@@ -17,4 +17,4 @@ COPY . .
 
 EXPOSE 8080
 
-CMD ["/app/entrypoint.sh"]
+CMD ["python", "run.py"]

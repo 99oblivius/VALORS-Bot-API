@@ -10,6 +10,7 @@ services:
       DATABASE_URL: postgresql+psycopg2://valorsuser:valorspassword@valorsdb:5432/valorsdb
       REDIS_HOST: valorscache
       REDIS_PORT: 6379
+      LOG_LEVEL: 1
     volumes:
       - ./VALORS-Bot-API/pipe:/hostpipe
   
