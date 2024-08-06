@@ -11,7 +11,9 @@ services:
       REDIS_HOST: valorscache
       REDIS_PORT: 6379
       LOG_LEVEL: 1
+      PYTHONPATH: /srv
     volumes:
+      - ./VALORS-Bot-API/app:/srv/app
       - ./VALORS-Bot-API/pipe:/hostpipe
   
   valorsbot:

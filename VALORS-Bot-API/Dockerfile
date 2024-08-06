@@ -3,7 +3,7 @@ FROM python:3.9-slim
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
 
-WORKDIR /app
+WORKDIR /srv
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
@@ -17,4 +17,4 @@ COPY . .
 
 EXPOSE 8080
 
-CMD ["python", "run.py"]
+CMD ["uvicorn", "run:app", "--host", "0.0.0.0", "--port", "8080", "--reload", "--reload-dir", "app", "--log-level", "error"]

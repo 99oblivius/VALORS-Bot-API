@@ -81,7 +81,6 @@ async def handle_verify(request: Request, db: Session):
         user_id_str = str(user_id)
         
         existing_mapping = db.query(UserPlatformMappings).filter_by(platform_id=user_id_str).first()
-        log.info(f"Existing mapping from database: {existing_mapping}")
         if existing_mapping:
             if existing_mapping.user_id == int(discord_uuid):
                 log.info(f"User {discord_uuid} has already verified with platform ID {user_id_str}")

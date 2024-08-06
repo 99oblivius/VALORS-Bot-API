@@ -16,15 +16,11 @@ def create_app():
         CORSMiddleware,
         allow_origins=["https://valorsleague.org"],
         allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-        allow_headers=["Content-Type", "Authorization"],
-    )
+        allow_headers=["Content-Type", "Authorization"])
 
     @app.exception_handler(HTTPException)
     async def http_exception_handler(request: Request, exc: HTTPException):
-        return JSONResponse(
-            status_code=exc.status_code,
-            content=exc.detail,
-        )
+        return JSONResponse(status_code=exc.status_code, content=exc.detail)
     
     # Set logger level
     log.set_level(log.DEBUG if app.debug else log.INFO)
