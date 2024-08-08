@@ -1,32 +1,29 @@
-import asyncio
-from fastapi import FastAPI, Request, HTTPException
-from fastapi.responses import JSONResponse
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi import FastAPI
 from .models import init_db
 from .routes import init_routes
 import aioredis
 from datetime import datetime, timezone
 from .utils.logger import log
 from config import config
+from .middleware.db_session import DBSessionMiddleware
+from .middleware.cors import add_cors_middleware
+from .middleware.exception_handler import add_exception_handler
 
 def create_app():
     app = FastAPI()
     
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=["https://valorsleague.org"],
-        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-        allow_headers=["Content-Type", "Authorization"])
-
-    @app.exception_handler(HTTPException)
-    async def http_exception_handler(request: Request, exc: HTTPException):
-        return JSONResponse(status_code=exc.status_code, content=exc.detail)
+    # Add middlewares
+    add_cors_middleware(app)
+    add_exception_handler(app)
     
     # Set logger level
     log.set_level(log.DEBUG if app.debug else log.INFO)
     
     # Initialize database
     init_db(app)
+    
+    # Add DB Session Middleware
+    app.add_middleware(DBSessionMiddleware)
     
     # Initialize Redis
     app.redis_db = aioredis.from_url(f"redis://{config.REDIS_HOST}:{config.REDIS_PORT}", decode_responses=True)

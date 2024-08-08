@@ -1,12 +1,9 @@
 from fastapi import APIRouter, Request, Depends
+from ..dependencies import get_db
 from sqlalchemy.orm import Session
 from ..services import auth_service, update_service, data_service
-from ..models import init_db
 
 router = APIRouter()
-
-def get_db(request: Request):
-    return request.app.state.db
 
 def init_routes(app):
     @router.post('/update')
