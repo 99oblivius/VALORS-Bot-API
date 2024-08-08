@@ -1,6 +1,5 @@
 from starlette.middleware.base import BaseHTTPMiddleware
 from fastapi import Request
-from sqlalchemy.orm import Session
 
 class DBSessionMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):

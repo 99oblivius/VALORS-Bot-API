@@ -1,42 +1,35 @@
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
+from uuid import uuid4
+from datetime import datetime, timedelta, timezone
+from sqlalchemy.orm import Session as DBSession
 from app.models import Session, User
-import secrets
-from datetime import datetime, timedelta
 
-class AsyncSessionManager:
-    def __init__(self, db: AsyncSession):
-        self.db = db
+class SessionManager:
+    def __init__(self, db_session: DBSession):
+        self.db_session = db_session
 
-    async def create_session(self, user: User, ip_address: str, user_agent: str) -> Session:
-        session_token = secrets.token_urlsafe(32)
-        new_session = Session(
+    def create_session(self, user: User, ip_address: str, user_agent: str) -> Session:
+        session = Session(
             user_id=user.id,
-            session_token=session_token,
+            session_token=str(uuid4()),
             ip_address=ip_address,
             user_agent=user_agent
         )
-        self.db.add(new_session)
-        await self.db.commit()
-        return new_session
+        self.db_session.add(session)
+        self.db_session.commit()
+        return session
 
-    async def get_session(self, session_token: str) -> Session | None:
-        result = await self.db.execute(
-            select(Session).filter(Session.session_token == session_token)
-        )
-        return result.scalar_one_or_none()
+    def get_session(self, session_token: str) -> Session:
+        return self.db_session.query(Session).filter(Session.session_token == session_token).first()
 
-    async def update_session(self, session: Session):
-        session.last_activity = datetime.utcnow()
-        await self.db.commit()
+    def update_session(self, session: Session):
+        session.last_activity = datetime.now(timezone.utc)
+        self.db_session.commit()
 
-    async def delete_session(self, session: Session):
-        await self.db.delete(session)
-        await self.db.commit()
+    def delete_session(self, session: Session):
+        self.db_session.delete(session)
+        self.db_session.commit()
 
-    async def clear_expired_sessions(self, expiry_days: int = 30):
-        expiry_date = datetime.utcnow() - timedelta(days=expiry_days)
-        await self.db.execute(
-            Session.__table__.delete().where(Session.last_activity < expiry_date)
-        )
-        await self.db.commit()
+    def cleanup_old_sessions(self, max_age: timedelta = timedelta(days=30)):
+        cutoff = datetime.now(timezone.utc) - max_age
+        self.db_session.query(Session).filter(Session.last_activity < cutoff).delete()
+        self.db_session.commit()
