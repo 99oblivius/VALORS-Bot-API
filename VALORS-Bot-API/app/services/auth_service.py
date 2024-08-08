@@ -2,7 +2,7 @@ from fastapi import HTTPException, Request
 from fastapi.responses import JSONResponse, RedirectResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
 from ..models import Platform, UserPlatformMappings, BotSettings
-from ..utils.discord_utils import add_discord_role
+from ..utils.discord import add_discord_role
 from ..utils.logger import log
 from urllib.parse import urlencode
 from steam.steamid import SteamID

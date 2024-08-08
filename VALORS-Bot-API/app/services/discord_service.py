@@ -1,22 +1,37 @@
+from fastapi import HTTPException
+from fastapi.responses import RedirectResponse
+from sqlalchemy.orm import Session
+from ..utils.discord import exchange_code, get_user_info
+from ..models import UserPlatformMappings
 from config import config
-import httpx
 
-DISCORD_API_URL = "https://discord.com/api"
+class AuthService:
+    @staticmethod
+    async def login():
+        url = f"https://discord.com/api/oauth2/authorize?client_id={config.DISCORD_CLIENT_ID}&redirect_uri={config.DISCORD_REDIRECT_URI}&response_type=code&scope=identify+email"
+        return RedirectResponse(url=url)
 
-async def get_discord_token(code: str):
-    data = {
-        'client_id': config.DISCORD_CLIENT_ID,
-        'client_secret': config.DISCORD_CLIENT_TOKEN,
-        'grant_type': 'authorization_code',
-        'code': code,
-        'redirect_uri': config.DISCORD_REDIRECT_URI
-    }
-    async with httpx.AsyncClient() as client:
-        response = await client.post(f'{DISCORD_API_URL}/oauth2/token', data=data)
-    return response.json()
+    @staticmethod
+    async def callback(code: str, db: Session):
+        token_data = await exchange_code(code)
+        if 'access_token' not in token_data:
+            raise HTTPException(status_code=400, detail="Failed to get access token")
+        
+        user_info = await get_user_info(token_data['access_token'])
+        if 'id' not in user_info:
+            raise HTTPException(status_code=400, detail="Failed to get user info")
+    
+        # user = db.query(UserPlatformMappings).filter_by(user_id=int(user_info['id']), platform='discord').first()
+        # if not user:
+        #     user = UserPlatformMappings(
+        #         user_id=int(user_info['id']),
+        #         platform='discord',
+        #         platform_id=user_info['id']
+        #     )
+        #     db.add(user)
+        #     db.commit()
 
-async def get_discord_user(access_token: str):
-    headers = {'Authorization': f'Bearer {access_token}'}
-    async with httpx.AsyncClient() as client:
-        response = await client.get(f'{DISCORD_API_URL}/users/@me', headers=headers)
-    return response.json()
+        # Here you would typically create a session for the user
+        # For now, we'll just return the user info
+        print(user_info)
+        return user_info

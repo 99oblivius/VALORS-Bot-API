@@ -2,15 +2,18 @@ from fastapi import APIRouter, Request, Depends
 from ..dependencies import get_db
 from sqlalchemy.orm import Session
 from ..services import auth_service, update_service, data_service
+from .auth import router as auth_router
 
 router = APIRouter()
 
 def init_routes(app):
+    router.include_router(auth_router, prefix="/auth", tags=["authentication"])
+
     @router.post('/update')
     async def update(request: Request):
         return await update_service.handle_update(request)
 
-    @router.get('/auth/{platform}/{token}')
+    @router.get('/mm-auth/{platform}/{token}')
     async def auth(platform: str, token: str, request: Request):
         return await auth_service.handle_auth(request, platform, token)
 
