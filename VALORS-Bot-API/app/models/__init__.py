@@ -13,8 +13,8 @@ from config import config
 
 def init_db(app):
     engine = create_engine(config.DATABASE_URL)
-    Base.metadata.create_all(engine)
-    app.state.db = sessionmaker(bind=engine)()
+    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    app.state.db = SessionLocal
 
 Base = declarative_base()
 

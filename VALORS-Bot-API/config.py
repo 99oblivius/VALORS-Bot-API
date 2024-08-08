@@ -12,5 +12,8 @@ class Config:
     DATABASE_URL = os.getenv('DATABASE_URL')
     DISCORD_BOT_TOKEN = os.getenv('DISCORD_BOT_TOKEN')
     DISCORD_API_ENDPOINT = 'https://discord.com/api/v10'
+    DISCORD_CLIENT_ID = os.getenv("DISCORD_CLIENT_ID")
+    DISCORD_CLIENT_TOKEN = os.getenv("DISCORD_CLIENT_TOKEN")
+    DISCORD_REDIRECT_URI = os.getenv("DISCORD_REDIRECT_URI")
 
 config = Config()
