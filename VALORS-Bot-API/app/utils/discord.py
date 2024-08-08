@@ -26,7 +26,22 @@ async def exchange_code(code: str):
     }
     async with aiohttp.ClientSession() as session:
         async with session.post(f'{config.DISCORD_API_ENDPOINT}/oauth2/token', data=data, headers=headers) as resp:
+            resp.raise_for_status()
             return await resp.json()
+
+async def revoke_token(token: str):
+    data = {
+        'client_id': config.DISCORD_CLIENT_ID,
+        'client_secret': config.DISCORD_CLIENT_TOKEN,
+        'token': token,
+        'token_type_hint': 'access_token'
+    }
+    headers = {
+        'Content-Type': 'application/x-www-form-urlencoded'
+    }
+    async with aiohttp.ClientSession() as session:
+        async with session.post(f'{config.DISCORD_API_ENDPOINT}/oauth2/token/revoke', data=data, headers=headers) as resp:
+            print(resp)
 
 async def get_user_info(access_token: str):
     headers = {

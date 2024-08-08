@@ -1,9 +1,10 @@
 from fastapi import HTTPException
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
-from ..utils.discord import exchange_code, get_user_info
+from ..utils.discord import exchange_code, get_user_info, revoke_token
 from ..models import UserPlatformMappings
 from config import config
+import asyncio
 
 class AuthService:
     @staticmethod
@@ -20,6 +21,8 @@ class AuthService:
         user_info = await get_user_info(token_data['access_token'])
         if 'id' not in user_info:
             raise HTTPException(status_code=400, detail="Failed to get user info")
+        
+        await revoke_token(token_data['access_token'])
     
         # user = db.query(UserPlatformMappings).filter_by(user_id=int(user_info['id']), platform='discord').first()
         # if not user:
