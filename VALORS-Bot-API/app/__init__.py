@@ -9,7 +9,7 @@ from .middleware.db_session import DBSessionMiddleware
 from .middleware.cors import add_cors_middleware
 from .middleware.exception_handler import add_exception_handler
 
-def create_app():
+def create_app() -> FastAPI:
     app = FastAPI()
     
     # Add middlewares

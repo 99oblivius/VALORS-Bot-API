@@ -1,5 +1,5 @@
 from fastapi import Request
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
-def get_db(request: Request) -> Session:
+def get_db(request: Request) -> AsyncSession:
     return request.state.db
