@@ -16,11 +16,11 @@ class AuthService:
     async def callback(code: str, db: Session):
         token_data = await exchange_code(code)
         if 'access_token' not in token_data:
-            raise HTTPException(status_code=400, detail="Failed to get access token")
+            raise HTTPException(status_code=400, detail={"error": "Failed to get access token"})
         
         user_info = await get_user_info(token_data['access_token'])
         if 'id' not in user_info:
-            raise HTTPException(status_code=400, detail="Failed to get user info")
+            raise HTTPException(status_code=400, detail={"error": "Failed to get user info"})
         
         await revoke_token(token_data['access_token'])
     
@@ -36,5 +36,4 @@ class AuthService:
 
         # Here you would typically create a session for the user
         # For now, we'll just return the user info
-        print(user_info)
-        return user_info
+        return RedirectResponse(url="https://valorsleague.org/profile/")

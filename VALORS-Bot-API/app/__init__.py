@@ -30,7 +30,6 @@ def create_app():
     
     # Initialize routes
     init_routes(app)
-    log.info(f"Routes: {[route for route in app.routes]}")
     
     log.info(f"Server started at {datetime.now(timezone.utc)}")
     

@@ -40,8 +40,7 @@ async def revoke_token(token: str):
         'Content-Type': 'application/x-www-form-urlencoded'
     }
     async with aiohttp.ClientSession() as session:
-        async with session.post(f'{config.DISCORD_API_ENDPOINT}/oauth2/token/revoke', data=data, headers=headers) as resp:
-            print(resp)
+        await session.post(f'{config.DISCORD_API_ENDPOINT}/oauth2/token/revoke', data=data, headers=headers)
 
 async def get_user_info(access_token: str):
     headers = {
