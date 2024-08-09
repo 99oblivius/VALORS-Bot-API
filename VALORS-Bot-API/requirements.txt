@@ -8,3 +8,4 @@ steam
 httpx
 jinja2
 aiohttp
+asyncpg

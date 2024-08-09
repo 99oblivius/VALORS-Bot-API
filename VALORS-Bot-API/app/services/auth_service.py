@@ -1,13 +1,16 @@
 from fastapi import HTTPException, Request
-from fastapi.responses import JSONResponse, RedirectResponse, HTMLResponse
+from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
-from ..models import Platform, UserPlatformMappings, BotSettings
+from ..models import Platform
 from ..utils.discord import add_discord_role
 from ..utils.logger import log
+from ..utils.database import get_bot_settings, update_user_platform_mapping, get_user_platform_mapping, get_existing_mapping
 from urllib.parse import urlencode
 from steam.steamid import SteamID
 from datetime import datetime, timezone
-from sqlalchemy.orm import Session
+from sqlalchemy.future import select
+from sqlalchemy.orm import selectinload
+from sqlalchemy.ext.asyncio import AsyncSession
 
 templates = Jinja2Templates(directory="pages")
 
@@ -45,7 +48,7 @@ async def handle_auth(request: Request, platform: str, token: str):
     elif platform == Platform.PLAYSTATION.value:
         raise HTTPException(status_code=501, detail={"error": 'PlayStation authentication not implemented yet'})
 
-async def handle_verify(request: Request, db: Session):
+async def handle_verify(request: Request):
     token = request.query_params.get('token')
     if token is None:
         log.info(f"Incorrect header token")
@@ -77,10 +80,11 @@ async def handle_verify(request: Request, db: Session):
         user_id = "playstation_id_placeholder"
         log.info(f"Extracted user_id for PlayStation: {user_id}")
 
+    db = request.state.db
     try:
         user_id_str = str(user_id)
         
-        existing_mapping = db.query(UserPlatformMappings).filter_by(platform_id=user_id_str).first()
+        existing_mapping = await get_existing_mapping(db, user_id_str)
         if existing_mapping:
             if existing_mapping.user_id == int(discord_uuid):
                 log.info(f"User {discord_uuid} has already verified with platform ID {user_id_str}")
@@ -88,21 +92,18 @@ async def handle_verify(request: Request, db: Session):
             log.error(f"Platform ID {user_id_str} is already associated to a Discord account.")
             return RedirectResponse(url=str(request.url_for('verified').include_query_params(failed=True, error="Platform ID already associated to a Discord account")))
         
-        mapping = db.query(UserPlatformMappings).filter_by(user_id=discord_uuid, platform=Platform(platform)).first()
+        mapping = await get_user_platform_mapping(db, discord_uuid, Platform(platform))
         log.info(f"Mapping from database: {mapping}")
         
-        if not mapping:
-            new_mapping = UserPlatformMappings(guild_id=guild_id, user_id=discord_uuid, platform=Platform(platform), platform_id=user_id_str)
-            db.add(new_mapping)
-            db.commit()
-            log.info(f"New mapping added: {new_mapping}")
-        else:
-            mapping.platform_id = user_id_str
-            db.commit()
-            log.info(f"Mapping updated: {mapping}")
+        await update_user_platform_mapping(
+            db, mapping, 
+            guild_id, 
+            discord_uuid, 
+            Platform(platform), 
+            user_id_str)
         
         # Add the Discord role
-        settings = db.query(BotSettings).where(BotSettings.guild_id == guild_id).first()
+        settings = await get_bot_settings(db, guild_id)
         if settings:
             role_id = settings.mm_verified_role
             if await add_discord_role(guild_id, discord_uuid, role_id):

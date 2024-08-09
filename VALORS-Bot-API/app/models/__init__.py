@@ -1,5 +1,4 @@
 from sqlalchemy import (
-    create_engine, 
     Table,
     Column, 
     Integer, 
@@ -9,19 +8,36 @@ from sqlalchemy import (
     ForeignKey,
     DateTime,
     Boolean,
+    TIMESTAMP,
+    Float,
+    ForeignKeyConstraint,
+    MetaData,
     Enum as sq_Enum
 )
-from sqlalchemy.orm import relationship, sessionmaker, declarative_base
+from sqlalchemy.orm import relationship, declarative_base
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy.orm import sessionmaker
 from sqlalchemy.sql import func
 from enum import Enum
 from config import config
 
-def init_db(app):
-    engine = create_engine(config.DATABASE_URL)
-    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-    app.state.db = SessionLocal
-
 Base = declarative_base()
+metadata = MetaData()
+
+async def init_db(app):
+    engine = create_async_engine(config.DATABASE_URL)
+    app.state.engine = engine
+
+    AsyncSessionLocal = sessionmaker(
+        engine, class_=AsyncSession, expire_on_commit=False)
+    app.state.AsyncSessionLocal = AsyncSessionLocal
+
+    async with engine.begin() as conn:
+        await conn.run_sync(metadata.reflect, schema='public')
+
+async def init_models(engine):
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.reflect)
 
 #######################
 # VALORS Match Making #
@@ -30,23 +46,62 @@ class Platform(Enum):
     STEAM = "steam"
     PLAYSTATION = "playstation"
 
-class UserPlatformMappings(Base):
-    __tablename__ = 'user_platform_mappings'
+class MMBotUsers(Base):
+    __tablename__ = 'mm_bot_users'
 
-    id = Column(Integer, primary_key=True)
-    guild_id = Column(BigInteger, nullable=True)
-    user_id = Column(BigInteger, nullable=False)
-    platform = Column(sq_Enum(Platform), nullable=False)
-    platform_id = Column(String(64), unique=True, nullable=False)
+    guild_id      = Column(BigInteger, primary_key=True, nullable=False)
+    user_id       = Column(BigInteger, primary_key=True, nullable=False)
+    display_name  = Column(String(32))
+    region        = Column(String(32))
+    registered    = Column(TIMESTAMP(timezone=True), server_default=func.now())
 
     __table_args__ = (
-        UniqueConstraint('guild_id', 'user_id', 'platform', name='unique_guild_user_platform'),
+        ForeignKeyConstraint(['guild_id', 'region'], ['bot_regions.guild_id', 'bot_regions.label']),
+        {'extend_existing': True, 'autoload_with': None}
     )
+
+    summary_stats = relationship("MMBotUserSummaryStats", uselist=False, back_populates="user")
+
+class MMBotUserSummaryStats(Base):
+    __tablename__ = 'mm_bot_user_summary_stats'
+
+    guild_id        = Column(BigInteger, primary_key=True, nullable=False)
+    user_id         = Column(BigInteger, primary_key=True, nullable=False)
+    mmr             = Column(Float, default=900)
+    games           = Column(Integer, default=0)
+    wins            = Column(Integer, default=0)
+    losses          = Column(Integer, default=0)
+    ct_starts       = Column(Integer, default=0)
+    top_score       = Column(Integer, default=0)
+    top_kills       = Column(Integer, default=0)
+    top_assists     = Column(Integer, default=0)
+    total_score     = Column(Integer, default=0)
+    total_kills     = Column(Integer, default=0)
+    total_deaths    = Column(Integer, default=0)
+    total_assists   = Column(Integer, default=0)
+
+    __table_args__ = (
+        ForeignKeyConstraint(['guild_id', 'user_id'], ['mm_bot_users.guild_id', 'mm_bot_users.user_id']),
+        {'extend_existing': True, 'autoload_with': None}
+    )
+    
+    user = relationship("MMBotUsers", back_populates="summary_stats")
+
+class UserPlatformMappings(Base):
+    __tablename__ = 'user_platform_mappings'
+    __table_args__ = {'extend_existing': True, 'autoload_with': None}
+
+    id = Column(Integer, primary_key=True)
+    guild_id = Column(BigInteger)
+    user_id = Column(BigInteger)
+    platform = Column(sq_Enum(Platform))
+    platform_id = Column(String(64))
 
 class BotSettings(Base):
     __tablename__ = 'bot_settings'
+    __table_args__ = {'extend_existing': True, 'autoload_with': None}
 
-    guild_id = Column(BigInteger, primary_key=True, nullable=False)
+    guild_id = Column(BigInteger, primary_key=True)
     mm_verified_role = Column(BigInteger)
 
 #################
