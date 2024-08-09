@@ -61,7 +61,7 @@ async def get_match_making_leaderboard(db: AsyncSession, guild_id: int) -> List[
     result = await db.execute(
         select(MMBotUserSummaryStats)
         .where(
-            MMBotUserSummaryStats.guild_id == guild_id,
+            MMBotUserSummaryStats.guild_id == int(guild_id),
             MMBotUserSummaryStats.games > 0)
         .order_by(desc(MMBotUserSummaryStats.mmr)))
     return [
