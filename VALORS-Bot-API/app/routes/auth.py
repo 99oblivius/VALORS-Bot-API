@@ -1,8 +1,10 @@
+import hmac
 from fastapi import APIRouter, Depends, Request, HTTPException
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
+from config import config
 from ..models import User
-from ..services.session_manager import SessionManager
+from ..services.login_session_manager import LoginSessionManager
 from ..utils.database import get_db
 from ..services.discord_service import AuthService
 
@@ -18,26 +20,24 @@ async def callback(request: Request):
     code = request.query_params.get('code')
     if error or not code:
         return RedirectResponse(url="https://valorsleague.org/")
-    return await AuthService.callback(code, request.state.db, request)
+    return await AuthService.callback(code, request)
 
 @router.get("/check-session")
 async def check_session(request: Request):
-    session_token = request.cookies.get("session_token")
+    auth_header = request.headers.get('Authorization')
+    if not auth_header:
+        raise HTTPException(status_code=401, detail={"error": "Missing Authorization header"})
+    
+    if not hmac.compare_digest(auth_header, config.API_KEY):
+        raise HTTPException(status_code=401, detail={"error": "Invalid token"})
+    
+    session_token = request.query_params.get("session_token")
     if not session_token:
-        raise HTTPException(status_code=401, detail="Not authenticated")
+        raise HTTPException(status_code=401, detail={"error": "No session token"})
 
-    session_manager = SessionManager(request.state.db)
+    session_manager = LoginSessionManager(request.state.db)
     session = session_manager.get_session(session_token)
     if not session:
-        raise HTTPException(status_code=401, detail="Invalid session")
+        raise HTTPException(status_code=401, detail={"error": "Invalid session"})
 
-    user = request.state.db.query(User).filter(User.id == session.user_id).first()
-    if not user:
-        raise HTTPException(status_code=401, detail="User not found")
-
-    return {
-        "id": user.id,
-        "username": user.username,
-        "email": user.email,
-        "roles": [role.name for role in user.roles]
-    }
+    return {"success": "Logged In"}
