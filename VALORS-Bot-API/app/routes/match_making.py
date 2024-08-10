@@ -1,5 +1,6 @@
 from typing import Dict, List
 import asyncio
+from config import config
 
 from fastapi import APIRouter, Request
 
@@ -16,10 +17,9 @@ async def create_member_lookup(members: List[Dict]) -> Dict[str, str]:
 
 @router.get("/leaderboard")
 async def leaderboard(request: Request):
-    guild_id = 1217224187454685295
     members, leaderboard = await asyncio.gather(
-        get_all_guild_members(guild_id),
-        get_match_making_leaderboard(request.state.db, guild_id))
+        get_all_guild_members(config.DISCORD_GUILD_ID),
+        get_match_making_leaderboard(request.state.db, config.DISCORD_GUILD_ID))
     member_lookup = await create_member_lookup(members)
     
     updated_leaderboard = []
