@@ -9,3 +9,4 @@ httpx
 jinja2
 aiohttp
 asyncpg
+nextcord
