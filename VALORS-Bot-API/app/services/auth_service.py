@@ -75,10 +75,10 @@ async def handle_verify(request: Request):
 
         steamid = openid_claimed_id.split('/')[-1]
         user_id = SteamID(steamid).as_64
-        log.info(f"Extracted steamid: {steamid}, user_id: {user_id}")
+        log.info(f"Extracted steamid: {steamid}, user_id: {discord_uuid}")
     elif platform == Platform.PLAYSTATION.value:
         user_id = "playstation_id_placeholder"
-        log.info(f"Extracted user_id for PlayStation: {user_id}")
+        log.info(f"Extracted user_id for PlayStation: {discord_uuid}")
 
     db = request.state.db
     try:
@@ -97,13 +97,13 @@ async def handle_verify(request: Request):
         
         await update_user_platform_mapping(
             db, mapping, 
-            guild_id, 
+            int(guild_id), 
             discord_uuid, 
             Platform(platform), 
             user_id_str)
         
         # Add the Discord role
-        settings = await get_bot_settings(db, guild_id)
+        settings = await get_bot_settings(db, int(guild_id))
         if settings:
             role_id = settings.mm_verified_role
             if await add_discord_role(guild_id, discord_uuid, role_id):
@@ -112,7 +112,7 @@ async def handle_verify(request: Request):
                 log.error(f"Failed to add verified role to user {discord_uuid} in guild {guild_id}")
 
     except Exception as e:
-        db.rollback()
+        await db.rollback()
         log.error(f"Database error: {str(e)}")
         return RedirectResponse(url=str(request.url_for('verified').include_query_params(failed=True, error=str(e))))
 
