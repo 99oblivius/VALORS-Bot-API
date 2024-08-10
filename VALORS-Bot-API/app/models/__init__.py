@@ -19,29 +19,12 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.sql import func
 from enum import Enum
-from config import config
 
 Base = declarative_base()
 metadata = MetaData()
 
-async def init_db(app):
-    engine = create_async_engine(config.DATABASE_URL)
-    app.state.engine = engine
+# Existing tables
 
-    AsyncSessionLocal = sessionmaker(
-        engine, class_=AsyncSession, expire_on_commit=False)
-    app.state.AsyncSessionLocal = AsyncSessionLocal
-
-    async with engine.begin() as conn:
-        await conn.run_sync(metadata.reflect, schema='public')
-
-async def init_models(engine):
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.reflect)
-
-#######################
-# VALORS Match Making #
-#######################
 class Platform(Enum):
     STEAM = "steam"
     PLAYSTATION = "playstation"
@@ -87,6 +70,19 @@ class MMBotUserSummaryStats(Base):
     
     user = relationship("MMBotUsers", back_populates="summary_stats")
 
+class MMBotRanks(Base):
+    __tablename__ = 'mm_bot_ranks'
+
+    id             = Column(Integer, primary_key=True)
+    guild_id       = Column(BigInteger, ForeignKey('bot_settings.guild_id'), nullable=False)
+    mmr_threshold  = Column(Integer, nullable=False)
+    role_id        = Column(BigInteger, nullable=False)
+    timestamp      = Column(TIMESTAMP(timezone=True), server_default=func.now())
+
+    __table_args__ = (
+        {'extend_existing': True, 'autoload_with': None}
+    )
+
 class UserPlatformMappings(Base):
     __tablename__ = 'user_platform_mappings'
     __table_args__ = {'extend_existing': True, 'autoload_with': None}
@@ -97,6 +93,10 @@ class UserPlatformMappings(Base):
     platform = Column(sq_Enum(Platform))
     platform_id = Column(String(64))
 
+    __table_args__ = (
+        UniqueConstraint('guild_id', 'user_id', 'platform', name='unique_guild_user_platform'),
+    )
+
 class BotSettings(Base):
     __tablename__ = 'bot_settings'
     __table_args__ = {'extend_existing': True, 'autoload_with': None}
@@ -104,14 +104,7 @@ class BotSettings(Base):
     guild_id = Column(BigInteger, primary_key=True)
     mm_verified_role = Column(BigInteger)
 
-#################
-# VALORS LEAGUE #
-#################
-user_roles = Table('user_roles', Base.metadata,
-    Column('user_id', Integer, ForeignKey('valors_league.users.id')),
-    Column('role_id', Integer, ForeignKey('valors_league.roles.id')),
-    schema='valors_league'
-)
+# Valors League tables
 
 class User(Base):
     __tablename__ = 'users'
@@ -123,7 +116,7 @@ class User(Base):
     username = Column(String, unique=True, nullable=False)
     is_active = Column(Boolean, default=True)
 
-    roles = relationship("Role", secondary=user_roles, back_populates="users")
+    roles = relationship("Role", secondary="valors_league.user_roles", back_populates="users")
     sessions = relationship("Session", back_populates="user")
 
 class Role(Base):
@@ -134,7 +127,14 @@ class Role(Base):
     name = Column(String, unique=True, nullable=False)
     description = Column(String)
 
-    users = relationship("User", secondary=user_roles, back_populates="roles")
+    users = relationship("User", secondary="valors_league.user_roles", back_populates="roles")
+
+class UserRoles(Base):
+    __tablename__ = 'user_roles'
+    __table_args__ = {'schema': 'valors_league'}
+
+    user_id = Column(Integer, ForeignKey('valors_league.users.id'), primary_key=True)
+    role_id = Column(Integer, ForeignKey('valors_league.roles.id'), primary_key=True)
 
 class Session(Base):
     __tablename__ = 'sessions'
@@ -146,6 +146,23 @@ class Session(Base):
     ip_address = Column(String, nullable=False)
     user_agent = Column(String)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    last_activity = Column(DateTime(timezone=True), onupdate=func.now())
+    last_activity = Column(DateTime(timezone=True), default=func.now(), onupdate=func.now())
 
     user = relationship("User", back_populates="sessions")
+
+async def init_db(app, database_url):
+    engine = create_async_engine(database_url)
+    app.state.engine = engine
+
+    AsyncSessionLocal = sessionmaker(
+        engine, class_=AsyncSession, expire_on_commit=False)
+    app.state.AsyncSessionLocal = AsyncSessionLocal
+
+    async with engine.begin() as conn:
+        await conn.run_sync(metadata.reflect)
+        await conn.run_sync(Base.metadata.create_all, tables=[table for table in Base.metadata.tables.values() if table.schema == 'valors_league'])
+
+async def init_models(engine):
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.reflect)
+        await conn.run_sync(Base.metadata.create_all, tables=[table for table in Base.metadata.tables.values() if table.schema == 'valors_league'])

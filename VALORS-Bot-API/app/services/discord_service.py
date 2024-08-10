@@ -1,9 +1,9 @@
 from fastapi import HTTPException, Request
 from fastapi.responses import RedirectResponse
-from sqlalchemy.orm import Session
 from ..utils.discord import exchange_code, get_user_info, revoke_token
 from ..models import User
-from .session_manager import SessionManager
+from ..utils.database import upsert_user
+from .login_session_manager import LoginSessionManager
 from config import config
 
 class AuthService:
@@ -13,7 +13,7 @@ class AuthService:
         return RedirectResponse(url=url)
 
     @staticmethod
-    async def callback(code: str, db: Session, request: Request):
+    async def callback(code: str, request: Request):
         token_data = await exchange_code(code)
         if 'access_token' not in token_data:
             raise HTTPException(status_code=400, detail={"error": "Failed to get access token"})
@@ -24,19 +24,13 @@ class AuthService:
         
         await revoke_token(token_data['access_token'])
 
-        # Check if user exists, if not, create a new user
-        user = db.query(User).filter(User.discord_id == user_info['id']).first()
-        if not user:
-            user = User(
-                discord_id=user_info['id'],
-                email=user_info['email'],
-                username=user_info['username'])
-            db.add(user)
-            db.commit()
-
-        # Create a new session for the user
-        session_manager = SessionManager(db)
-        session = session_manager.create_session(
+        user = await upsert_user(request.state.db, 
+            discord_id=user_info['id'], 
+            email=user_info['email'],
+            username=user_info['username'])
+        
+        session_manager = LoginSessionManager(request.state.db)
+        session = await session_manager.create_session(
             user, 
             ip_address=request.client.host, 
             user_agent=request.headers.get("user-agent", ""))
@@ -45,9 +39,8 @@ class AuthService:
         response.set_cookie(
             key="session_token", 
             value=session.session_token, 
-            httponly=True, 
-            max_age=1800, 
-            secure=True,  # Use only with HTTPS
-            samesite="lax")
+            httponly=True,
+            # secure=True,
+            )
 
         return response

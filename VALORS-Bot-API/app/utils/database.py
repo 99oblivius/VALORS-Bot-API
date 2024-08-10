@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
 from sqlalchemy import desc
-from ..models import MMBotUserSummaryStats
+from ..models import MMBotUserSummaryStats, MMBotRanks, User
 import logging
 
 from ..models import *
@@ -14,34 +14,50 @@ async def get_db():
         finally:
             await session.close()
 
-async def get_bot_settings(db: AsyncSession, guild_id: int):
+async def upsert_user(db: AsyncSession, **user_info: dict) -> User:
+    result = await db.execute(
+        select(User)
+        .filter(User.discord_id == user_info['discord_id']))
+    user = result.scalars().first()
+
+    if not user:
+        user = User(**user_info)
+        db.add(user)
+        await db.commit()
+        await db.refresh(user)
+
+    return user
+
+async def get_mm_ranks(db: AsyncSession, guild_id: int) -> List[MMBotRanks]:
+    query = select(MMBotRanks).where(MMBotRanks.guild_id == guild_id).order_by(MMBotRanks.mmr_threshold)
+    result = await db.execute(query)
+    return result.scalars().all()
+
+async def get_bot_settings(db: AsyncSession, guild_id: int) -> BotSettings:
     query = select(BotSettings).where(BotSettings.guild_id == guild_id)
     result = await db.execute(query)
     settings = result.scalars().first()
     return settings
 
-async def get_existing_mapping(db: AsyncSession, user_id_str: str):
+async def get_existing_mapping(db: AsyncSession, user_id_str: str) -> UserPlatformMappings:
     query = select(UserPlatformMappings).filter_by(platform_id=user_id_str)
     result = await db.execute(query)
-    existing_mapping = result.scalars().first()
-    return existing_mapping
+    return result.scalars().first()
 
-async def get_user_platform_mapping(db: AsyncSession, discord_uuid: str, platform: Platform):
+async def get_user_platform_mapping(db: AsyncSession, discord_uuid: str, platform: Platform) -> UserPlatformMappings:
     query = (
         select(UserPlatformMappings)
-        .filter_by(user_id=discord_uuid, platform=platform)
-        .options(selectinload(UserPlatformMappings.related_fields)))
+        .filter_by(user_id=int(discord_uuid), platform=platform))
     result = await db.execute(query)
-    mapping = result.scalars().first()
-    return mapping
+    return result.scalars().first()
 
-async def update_user_platform_mapping(db: AsyncSession, mapping, guild_id: int, discord_uuid: str, platform: Platform, user_id_str: str):
+async def update_user_platform_mapping(db: AsyncSession, mapping: UserPlatformMappings, guild_id: int, discord_uuid: str, platform: Platform, user_id_str: str) -> UserPlatformMappings:
     log = logging.getLogger(__name__)
 
     if not mapping:
         new_mapping = UserPlatformMappings(
             guild_id=guild_id, 
-            user_id=discord_uuid, 
+            user_id=int(discord_uuid), 
             platform=platform, 
             platform_id=user_id_str
         )

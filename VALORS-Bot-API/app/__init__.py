@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from .models import init_db, init_models
+from .discord import init_discord
 from .routes import init_routes
 import aioredis
 from datetime import datetime, timezone
@@ -22,8 +23,9 @@ def create_app() -> FastAPI:
     # Initialize database
     @app.on_event("startup")
     async def startup_event():
-        await init_db(app)
+        await init_db(app, config.DATABASE_URL)
         await init_models(app.state.engine)
+        await init_discord()
     
     # Add DB Session Middleware
     app.add_middleware(AsyncDBSessionMiddleware)
