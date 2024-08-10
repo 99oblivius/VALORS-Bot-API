@@ -28,7 +28,6 @@ async def exchange_code(code: str):
     }
     async with aiohttp.ClientSession() as session:
         async with session.post(f'{config.DISCORD_API_ENDPOINT}/oauth2/token', data=data, headers=headers) as resp:
-            resp.raise_for_status()
             return await resp.json()
 
 async def revoke_token(token: str):
