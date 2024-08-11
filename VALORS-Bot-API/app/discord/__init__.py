@@ -15,7 +15,14 @@ class DiscordClient(nextcord.Client):
         else:
             log.warning(f"Warning: Guild with ID {config.DISCORD_GUILD_ID} not found")
 
-client = DiscordClient(intents=nextcord.Intents.all())
+client = DiscordClient(
+    intents=nextcord.Intents.all(), 
+    rollout_update_known=False, 
+    rollout_register_new=False, 
+    rollout_delete_unknown=False, 
+    rollout_associate_known=False, 
+    lazy_load_commands=False
+)
 
 async def init_discord():
     await client.login(config.DISCORD_BOT_TOKEN)
