@@ -1,34 +1,23 @@
 import hmac
-from fastapi import APIRouter, Depends, Request, HTTPException
-from fastapi.responses import RedirectResponse
-from sqlalchemy.orm import Session
+from fastapi import APIRouter, Request, HTTPException
 from config import config
-from ..models import User
 from ..services.login_session_manager import LoginSessionManager
 from ..utils.database import get_db
-from ..services.discord_service import AuthService
+from ..services.sessions import Sessions
 
 router = APIRouter()
 
-@router.get("/login")
-async def login():
-    return await AuthService.login()
+@router.post("/create")
+async def create_session(request: Request):
+    return await Sessions.login(request)
 
-@router.get("/callback")
-async def callback(request: Request):
-    error = request.query_params.get('error')
-    code = request.query_params.get('code')
-    if error or not code:
-        return RedirectResponse(url="https://valorsleague.org/")
-    return await AuthService.callback(code, request)
-
-@router.get("/check-session")
+@router.get("/check")
 async def check_session(request: Request):
     auth_header = request.headers.get('Authorization')
     if not auth_header:
         raise HTTPException(status_code=401, detail={"error": "Missing Authorization header"})
     
-    if not hmac.compare_digest(auth_header, config.API_KEY):
+    if not hmac.compare_digest(auth_header, config.API_TOKEN):
         raise HTTPException(status_code=401, detail={"error": "Invalid token"})
     
     session_token = request.query_params.get("session_token")

@@ -1,5 +1,4 @@
 from sqlalchemy import (
-    Table,
     Column, 
     Integer, 
     String, 
@@ -23,7 +22,6 @@ from enum import Enum
 Base = declarative_base()
 metadata = MetaData()
 
-# Existing tables
 
 class Platform(Enum):
     STEAM = "steam"
@@ -104,7 +102,10 @@ class BotSettings(Base):
     guild_id = Column(BigInteger, primary_key=True)
     mm_verified_role = Column(BigInteger)
 
-# Valors League tables
+
+########################
+# Valors League tables #
+########################
 
 class User(Base):
     __tablename__ = 'users'

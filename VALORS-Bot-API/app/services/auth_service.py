@@ -8,9 +8,6 @@ from ..utils.database import get_bot_settings, update_user_platform_mapping, get
 from urllib.parse import urlencode
 from steam.steamid import SteamID
 from datetime import datetime, timezone
-from sqlalchemy.future import select
-from sqlalchemy.orm import selectinload
-from sqlalchemy.ext.asyncio import AsyncSession
 
 templates = Jinja2Templates(directory="pages")
 

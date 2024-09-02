@@ -12,6 +12,7 @@ class Config:
     DATABASE_URL = os.getenv('DATABASE_URL')
     API_TOKEN = os.getenv('API_TOKEN')
     DISCORD_GUILD_ID = 1217224187454685295
+    DISCORD_BOT_ID = os.getenv('DISCORD_BOT_ID')
     DISCORD_BOT_TOKEN = os.getenv('DISCORD_BOT_TOKEN')
     DISCORD_API_ENDPOINT = 'https://discord.com/api/v10'
     DISCORD_CLIENT_ID = os.getenv("DISCORD_CLIENT_ID")

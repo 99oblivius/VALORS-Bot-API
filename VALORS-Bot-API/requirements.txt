@@ -1,5 +1,6 @@
 fastapi
 uvicorn
+cachetools
 psycopg2-binary
 python-dotenv
 aioredis
