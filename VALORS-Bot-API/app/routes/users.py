@@ -26,7 +26,7 @@ async def user_info(request: Request, user_id: int = Query(None, alias="user")):
     else:
         user = await get_user(request.state.db, user_id)
     
-    user_roles = await get_user_roles(request.state.db, user_id)
+    user_roles = await get_user_roles(request.state.db, user.discord_id)
     
     response_data = {
         "id": user.id, 
