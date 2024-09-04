@@ -107,7 +107,12 @@ class BotSettings(Base):
 # Valors League tables #
 ########################
 
-class User(Base):
+class Roles(Enum):
+    ADMIN  = "administrator"
+    MOD    = "moderator"
+    USER   = "user"
+
+class Users(Base):
     __tablename__ = 'users'
     __table_args__ = {'schema': 'valors_league'}
 
@@ -117,25 +122,17 @@ class User(Base):
     username = Column(String, unique=True, nullable=False)
     is_active = Column(Boolean, default=True)
 
-    roles = relationship("Role", secondary="valors_league.user_roles", back_populates="users")
+    roles = relationship("UserRoles", back_populates="user")
     sessions = relationship("Session", back_populates="user")
-
-class Role(Base):
-    __tablename__ = 'roles'
-    __table_args__ = {'schema': 'valors_league'}
-
-    id = Column(Integer, primary_key=True)
-    name = Column(String, unique=True, nullable=False)
-    description = Column(String)
-
-    users = relationship("User", secondary="valors_league.user_roles", back_populates="roles")
 
 class UserRoles(Base):
     __tablename__ = 'user_roles'
     __table_args__ = {'schema': 'valors_league'}
 
     user_id = Column(Integer, ForeignKey('valors_league.users.id'), primary_key=True)
-    role_id = Column(Integer, ForeignKey('valors_league.roles.id'), primary_key=True)
+    role = Column(sq_Enum(Roles, name="roles", create_type=True), primary_key=True)
+
+    user = relationship("Users", back_populates="roles")
 
 class Session(Base):
     __tablename__ = 'sessions'
@@ -149,19 +146,15 @@ class Session(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     last_activity = Column(DateTime(timezone=True), default=func.now(), onupdate=func.now())
 
-    user = relationship("User", back_populates="sessions")
+    user = relationship("Users", back_populates="sessions")
 
 async def init_db(app, database_url):
     engine = create_async_engine(database_url)
     app.state.engine = engine
-
     AsyncSessionLocal = sessionmaker(
         engine, class_=AsyncSession, expire_on_commit=False)
     app.state.AsyncSessionLocal = AsyncSessionLocal
-
-    async with engine.begin() as conn:
-        await conn.run_sync(metadata.reflect)
-        await conn.run_sync(Base.metadata.create_all, tables=[table for table in Base.metadata.tables.values() if table.schema == 'valors_league'])
+    await init_models(engine)
 
 async def init_models(engine):
     async with engine.begin() as conn:

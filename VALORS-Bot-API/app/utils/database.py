@@ -1,9 +1,9 @@
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import selectinload, joinedload
 from sqlalchemy import desc
-from ..models import MMBotUserSummaryStats, MMBotRanks, User
+from ..models import MMBotUserSummaryStats, MMBotRanks, Users, Roles
 import logging
 
 from ..models import *
@@ -14,19 +14,50 @@ async def get_db():
         finally:
             await session.close()
 
-async def upsert_user(db: AsyncSession, **user_info: dict) -> User:
+async def upsert_user(db: AsyncSession, **user_info: dict) -> Users:
     result = await db.execute(
-        select(User)
-        .filter(User.discord_id == user_info['discord_id']))
+        select(Users)
+        .filter(Users.discord_id == f"{user_info['discord_id']}"))
     user = result.scalars().first()
 
     if not user:
-        user = User(**user_info)
+        user = Users(**user_info)
         db.add(user)
         await db.commit()
         await db.refresh(user)
 
+        await add_user_role(db, user.id, Roles.USER)
+
     return user
+
+async def get_user(db: AsyncSession, user_id: int):
+    query = select(Users).where(Users.discord_id == f'{user_id}')
+    result = await db.execute(query)
+    return result.scalars().first()
+
+async def get_user_roles(db: AsyncSession, user_id: int) -> List[UserRoles]:
+    user_query = select(Users).where(Users.discord_id == f'{user_id}')
+    user_result = await db.execute(user_query)
+    user = user_result.scalar_one_or_none()
+    
+    if not user:
+        return []
+    
+    result = await db.execute(
+        select(UserRoles)
+        .where(UserRoles.user_id == user.id))
+    return result.scalars().all()
+
+async def get_user_from_session(db: AsyncSession, session_token: str) -> Optional[Users]:
+    query = select(Session).options(joinedload(Session.user)).where(Session.session_token == session_token)
+    result = await db.execute(query)
+    session = result.scalar_one_or_none()
+    return session.user if session else None
+
+async def add_user_role(db: AsyncSession, user_id: int, role: Roles):
+    user_role = UserRoles(user_id=f'{user_id}', role=role)
+    db.add(user_role)
+    await db.commit()
 
 async def get_mm_ranks(db: AsyncSession, guild_id: int) -> List[MMBotRanks]:
     query = select(MMBotRanks).where(MMBotRanks.guild_id == guild_id).order_by(MMBotRanks.mmr_threshold)
@@ -36,8 +67,7 @@ async def get_mm_ranks(db: AsyncSession, guild_id: int) -> List[MMBotRanks]:
 async def get_bot_settings(db: AsyncSession, guild_id: int) -> BotSettings:
     query = select(BotSettings).where(BotSettings.guild_id == guild_id)
     result = await db.execute(query)
-    settings = result.scalars().first()
-    return settings
+    return result.scalars().first()
 
 async def get_existing_mapping(db: AsyncSession, user_id_str: str) -> UserPlatformMappings:
     query = select(UserPlatformMappings).filter_by(platform_id=user_id_str)

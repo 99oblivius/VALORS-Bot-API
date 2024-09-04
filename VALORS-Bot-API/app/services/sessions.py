@@ -3,9 +3,9 @@ from fastapi import HTTPException, Request
 from fastapi.responses import JSONResponse
 from ..utils.discord import get_user_info
 from ..utils.logger import log
-from ..models import User
+from ..models import Users
 from ..utils.database import upsert_user
-from .login_session_manager import LoginSessionManager
+from .login_session_manager import SessionManager
 from config import config
 
 class Sessions:
@@ -38,8 +38,8 @@ class Sessions:
             raise HTTPException(status_code=500, detail={"error": "Failed to upsert user info"})
 
         try:
-            session_manager = LoginSessionManager(request.state.db)
-            session = await session_manager.create_session(
+            session = await SessionManager.create(
+                request.state.db,
                 user, 
                 ip_address=request.headers.get("address", ""), 
                 user_agent=request.headers.get("client-agent", ""))
