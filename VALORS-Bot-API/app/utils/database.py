@@ -32,7 +32,7 @@ async def upsert_user(db: AsyncSession, **user_info: dict) -> Users:
         await db.commit()
         await db.refresh(user)
 
-        await add_role(db, user.id, Roles.USER)
+        await add_user_role(db, user.id, Roles.USER)
 
     return user
 
@@ -41,12 +41,47 @@ async def get_user(db: AsyncSession, user_id: int):
     result = await db.execute(query)
     return result.scalars().first()
 
-async def add_role(db: AsyncSession, user_id: int, role: Roles):
+async def fetch_users(
+    db: AsyncSession,
+    search: str = "",
+    last_id: int = None,
+    last_username: str = None,
+    limit: int = 20
+) -> List[Dict[str, Any]]:
+    query = (
+        select(Users)
+        .where(Users.is_active == True)
+        .order_by(Users.username))
+
+    if search:
+        query = query.where(Users.username.ilike(f"%{search}%"))
+
+    if last_id is not None and last_username is not None:
+        query = query.where(
+            (Users.username > last_username) |
+            ((Users.username == last_username) & (Users.id > last_id)))
+
+    query = query.limit(limit)
+
+    result = await db.execute(query)
+    users = result.scalars().all()
+
+    return [
+        {
+            "id": user.id,
+            "discord_id": user.discord_id,
+            "username": user.username,
+            "email": user.email,
+        }
+        for user in users
+    ]
+
+async def add_user_role(db: AsyncSession, user_id: int, role: Roles):
     new_role = UserRoles(user_id=user_id, role=role)
     db.add(new_role)
     await db.commit()
 
-async def remove_role(db: AsyncSession, user_id: int, role: Roles) -> bool:
+async def remove_user_role(db: AsyncSession, user_id: int, role: Roles) -> bool:
     existing_role = await db.execute(
         select(UserRoles)
         .where(
@@ -66,6 +101,19 @@ async def get_user_roles(db: AsyncSession, user_id: int) -> List[Roles]:
         select(UserRoles.role)
         .where(UserRoles.user_id == user_id))
     return [role for (role,) in result.fetchall()]
+
+async def get_users_roles(db: AsyncSession, user_ids: List[int]) -> Dict[int, List[str]]:
+    result = await db.execute(
+        select(UserRoles.user_id, UserRoles.role)
+        .where(UserRoles.user_id.in_(user_ids)))
+    
+    user_roles = {}
+    for user_id, role in result.fetchall():
+        if user_id not in user_roles:
+            user_roles[user_id] = []
+        user_roles[user_id].append(role.value)
+    
+    return user_roles
 
 async def get_user_from_session(db: AsyncSession, session_token: str) -> Optional[Users]:
     query = select(Session).options(joinedload(Session.user)).where(Session.session_token == session_token)
