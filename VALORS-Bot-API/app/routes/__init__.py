@@ -10,9 +10,9 @@ router = APIRouter()
 
 def init_routes(app):
     router.include_router(auth_router, prefix="/session", tags=["authentication"])
-    router.include_router(user_router, prefix="/user")
-    router.include_router(mm_router, prefix="/matchmaking", tags=["matchmaking"])
+    router.include_router(user_router, prefix="/user", tags=["user"])
     router.include_router(guild_router, prefix="/guild", tags=["discord"])
+    router.include_router(mm_router, prefix="/matchmaking", tags=["matchmaking"])
 
     @router.post('/update')
     async def update(request: Request):

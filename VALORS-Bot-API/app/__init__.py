@@ -6,9 +6,12 @@ import aioredis
 from datetime import datetime, timezone
 from .utils.logger import log
 from config import config
-from .middleware.db_session import AsyncDBSessionMiddleware
-from .middleware.cors import add_cors_middleware
-from .middleware.exception_handler import add_exception_handler
+from .middleware import (
+    AsyncDBSessionMiddleware, 
+    SessionTokenMiddleware, AuthorizationTokenMiddleware, 
+    add_cors_middleware, 
+    add_exception_handler
+)
 
 def create_app() -> FastAPI:
     app = FastAPI()
@@ -29,6 +32,16 @@ def create_app() -> FastAPI:
     
     # Add DB Session Middleware
     app.add_middleware(AsyncDBSessionMiddleware)
+
+    # Add Authorization Middleware
+    app.add_middleware(AuthorizationTokenMiddleware, 
+        whitelist_paths=[
+            "/user", "/session", "/guild", "/matchmaking"])
+
+    # Add Session Token Middleware
+    app.add_middleware(SessionTokenMiddleware, 
+        whitelist_paths=[
+            "/user", "/session"])
     
     # Initialize Redis
     app.redis_db = aioredis.from_url(f"redis://{config.REDIS_HOST}:{config.REDIS_PORT}", decode_responses=True)

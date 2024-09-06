@@ -12,16 +12,12 @@ from ..utils.database import (
     fetch_users,
     total_user_count
 )
-from ..utils.utils import verify_auth
-from config import config
 from ..services.login_session_manager import SessionManager
 
 router = APIRouter()
 
 @router.get("/me")
 async def user_info(request: Request, discord_user_id: int = Query(None, alias="user")):
-    verify_auth(request, config.API_TOKEN)
-
     session_token = request.headers.get('session-token', None)
     session = await SessionManager.fetch(request.state.db, session_token)
     if session_token:
@@ -49,18 +45,17 @@ async def all_users(
     last_username: Optional[str] = Query(None, description="Last username for pagination"),
     limit: int = Query(20, description="Number of results to return", ge=1, le=100)
 ):
-    verify_auth(request, config.API_TOKEN)
-
     session_token = request.headers.get('session-token', None)
-    if session_token:
-        session = await SessionManager.fetch(request.state.db, session_token)
-        if not session:
-            raise HTTPException(status_code=401, detail={"error": "Invalid session token"})
-        current_user = await get_user_from_session(request.state.db, session_token)
+    if not session_token:
+        raise HTTPException(status_code=401, detail={"error": "Missing User Session token"})
 
-        user_roles = await get_user_roles(request.state.db, current_user.id)
-        if Roles.ADMIN not in user_roles and Roles.MOD not in user_roles:
-            raise HTTPException(status_code=403, detail={"error": "Insufficient permissions"})
+    session = await SessionManager.fetch(request.state.db, session_token)
+    if not session:
+        raise HTTPException(status_code=401, detail={"error": "Invalid User Session token"})
+    current_user = await get_user_from_session(request.state.db, session_token)
+    user_roles = await get_user_roles(request.state.db, current_user.id)
+    if Roles.ADMIN not in user_roles and Roles.MOD not in user_roles:
+        raise HTTPException(status_code=403, detail={"error": "Insufficient permissions"})
 
     users = await fetch_users(
         request.state.db,
@@ -77,8 +72,7 @@ async def all_users(
             users.append({
                 "id": user.id,
                 "discord_id": user.discord_id,
-                "username": user.username,
-                "email": user.email,
+                "username": user.username
             })
     
     users_roles = await get_users_roles(request.state.db, [u['id'] for u in users])
@@ -99,7 +93,6 @@ async def all_users(
 
 @router.get("/roles")
 async def get_roles(request: Request):
-    verify_auth(request, config.API_TOKEN)
     roles = list(sorted({role.value for role in Roles}))
     return JSONResponse(status_code=200, content={ 'roles': roles })
 
@@ -109,15 +102,6 @@ async def add_role(
     discord_user_id: int = Path(..., description="Discord user ID"),
     role: Roles = Path(..., description="Role to add")
 ):
-    verify_auth(request, config.API_TOKEN)
-
-    session_token = request.headers.get('session-token', None)
-    session = await SessionManager.fetch(request.state.db, session_token)
-    if session_token:
-        if not session:
-            raise HTTPException(status_code=401, detail={"error": "Invalid session token"})
-        user = await get_user_from_session(request.state.db, session_token)
-    
     user = await get_user_from_discord(request.state.db, discord_user_id)
     if not user:
         raise HTTPException(status_code=404, detail={"error": "User not found"})
@@ -135,8 +119,6 @@ async def remove_role(
     discord_user_id: int = Path(..., description="Discord user ID"),
     role: Roles = Path(..., description="Role to remove")
 ):
-    verify_auth(request, config.API_TOKEN)
-
     user = await get_user_from_discord(request.state.db, discord_user_id)
     if not user:
         raise HTTPException(status_code=404, detail={"error": "User not found"})

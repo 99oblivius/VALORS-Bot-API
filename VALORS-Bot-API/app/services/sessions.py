@@ -3,7 +3,6 @@ from fastapi import HTTPException, Request
 from fastapi.responses import JSONResponse
 from ..utils.discord import get_user_info
 from ..utils.logger import log
-from ..models import Users
 from ..utils.database import upsert_user
 from .login_session_manager import SessionManager
 from config import config
@@ -11,17 +10,7 @@ from config import config
 class Sessions:
     @staticmethod
     async def login(request: Request):
-        auth_header = request.headers.get('Authorization', None)
-        if auth_header is None:
-            raise HTTPException(status_code=401, detail={"error": "Missing Authorization header"})
-        
-        if not hmac.compare_digest(auth_header, config.API_TOKEN):
-            raise HTTPException(status_code=401, detail={"error": "Invalid token"})
-
         access_token = request.headers.get('access-token', None)
-        if access_token is None:
-            raise HTTPException(status_code=400, detail={"error": "Missing access token"})
-    
         try:
             user_info = await get_user_info(access_token)
             if 'id' not in user_info:
