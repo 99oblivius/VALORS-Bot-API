@@ -1,10 +1,9 @@
 from typing import List, Dict, Any, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from sqlalchemy.orm import selectinload, joinedload
-from sqlalchemy import desc, delete
+from sqlalchemy.orm import joinedload
+from sqlalchemy import desc, delete, desc
 from ..models import MMBotUserSummaryStats, MMBotRanks, Users, Roles
-import logging
 
 from ..models import *
 
@@ -41,10 +40,13 @@ async def get_user(db: AsyncSession, user_id: int):
     result = await db.execute(query)
     return result.scalars().first()
 
+async def total_user_count(db: AsyncSession) -> int:
+    return (await db.execute(func.count(Users.id))).scalar()
+
 async def fetch_users(
     db: AsyncSession,
     search: str = "",
-    last_id: int = None,
+    last_id: str = None,
     last_username: str = None,
     limit: int = 20
 ) -> List[Dict[str, Any]]:
@@ -56,10 +58,10 @@ async def fetch_users(
     if search:
         query = query.where(Users.username.ilike(f"%{search}%"))
 
-    if last_id is not None and last_username is not None:
+    if last_id not in (None, '') and last_username not in (None, ''):
         query = query.where(
             (Users.username > last_username) |
-            ((Users.username == last_username) & (Users.id > last_id)))
+            ((Users.username == last_username) & (Users.id > int(last_id))))
 
     query = query.limit(limit)
 
@@ -76,10 +78,18 @@ async def fetch_users(
         for user in users
     ]
 
-async def add_user_role(db: AsyncSession, user_id: int, role: Roles):
+async def add_user_role(db: AsyncSession, user_id: int, role: Roles) -> bool:
+    existing_role = await db.execute(
+        select(UserRoles)
+        .where(
+            (UserRoles.user_id == user_id) & (UserRoles.role == role)))
+    if existing_role.scalar_one_or_none():
+        return False
+    
     new_role = UserRoles(user_id=user_id, role=role)
     db.add(new_role)
     await db.commit()
+    return True
 
 async def remove_user_role(db: AsyncSession, user_id: int, role: Roles) -> bool:
     existing_role = await db.execute(
@@ -95,6 +105,7 @@ async def remove_user_role(db: AsyncSession, user_id: int, role: Roles) -> bool:
             UserRoles.user_id == user_id, 
             UserRoles.role == role))
     await db.commit()
+    return True
 
 async def get_user_roles(db: AsyncSession, user_id: int) -> List[Roles]:
     result = await db.execute(
@@ -112,6 +123,7 @@ async def get_users_roles(db: AsyncSession, user_ids: List[int]) -> Dict[int, Li
         if user_id not in user_roles:
             user_roles[user_id] = []
         user_roles[user_id].append(role.value)
+        user_roles[user_id].sort()
     
     return user_roles
 

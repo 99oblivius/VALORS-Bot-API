@@ -9,7 +9,8 @@ from ..utils.database import (
     add_user_role, 
     remove_user_role,
     Roles,
-    fetch_users
+    fetch_users,
+    total_user_count
 )
 from ..utils.utils import verify_auth
 from config import config
@@ -44,7 +45,7 @@ async def user_info(request: Request, discord_user_id: int = Query(None, alias="
 async def all_users(
     request: Request,
     search: str = Query(None, description="Search string for username"),
-    last_id: Optional[int] = Query(None, description="Last user ID for pagination"),
+    last_id: Optional[str] = Query(None, description="Last user ID for pagination"),
     last_username: Optional[str] = Query(None, description="Last username for pagination"),
     limit: int = Query(20, description="Number of results to return", ge=1, le=100)
 ):
@@ -67,11 +68,23 @@ async def all_users(
         last_id=last_id,
         last_username=last_username,
         limit=limit)
-
-    users_roles = await get_users_roles(request.state.db, [u['id'] for u in users])
-    for user in users:
-        user.update({ 'roles': users_roles.get(user['id'], None) })
     
+    total_users = await total_user_count(request.state.db)
+    
+    if len(users) == 0:
+        user = await get_user_from_discord(request.state.db, search)
+        if user:
+            users.append({
+                "id": user.id,
+                "discord_id": user.discord_id,
+                "username": user.username,
+                "email": user.email,
+            })
+    else:
+        users_roles = await get_users_roles(request.state.db, [u['id'] for u in users])
+        for user in users:
+            user.update({ 'roles': users_roles.get(user['id'], None) })
+        
     next_id = users[-1]['id'] if users else None
     next_username = users[-1]['username'] if users else None
 
@@ -79,6 +92,7 @@ async def all_users(
         status_code=200,
         content={
             'users': users,
+            'total': total_users,
             'next_id': next_id,
             'next_username': next_username,
         })
@@ -109,7 +123,8 @@ async def add_role(
         raise HTTPException(status_code=404, detail={"error": "User not found"})
     
     try:
-        await add_user_role(request.state.db, user.id, role)
+        if not await add_user_role(request.state.db, user.id, role):
+            raise Exception("User already has role")
         return JSONResponse(status_code=200, content={"message": f"Role {role.value} added to user {user.id}"})
     except Exception as e:
         raise HTTPException(status_code=400, detail={"error": f"Failed to add role: {str(e)}"})
@@ -126,8 +141,9 @@ async def remove_role(
     if not user:
         raise HTTPException(status_code=404, detail={"error": "User not found"})
     
-    await remove_user_role(request.state.db, user.id, role)
     try:
+        if not await remove_user_role(request.state.db, user.id, role):
+            raise Exception("User does not have role")
         return JSONResponse(status_code=200, content={"message": f"Role {role.value} removed from user {user.id}"})
     except Exception as e:
         raise HTTPException(status_code=400, detail={"error": f"Failed to remove role: {str(e)}"})
