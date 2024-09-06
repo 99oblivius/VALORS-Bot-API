@@ -80,10 +80,10 @@ async def all_users(
                 "username": user.username,
                 "email": user.email,
             })
-    else:
-        users_roles = await get_users_roles(request.state.db, [u['id'] for u in users])
-        for user in users:
-            user.update({ 'roles': users_roles.get(user['id'], None) })
+    
+    users_roles = await get_users_roles(request.state.db, [u['id'] for u in users])
+    for user in users:
+        user.update({ 'roles': users_roles.get(user['id'], None) })
         
     next_id = users[-1]['id'] if users else None
     next_username = users[-1]['username'] if users else None
