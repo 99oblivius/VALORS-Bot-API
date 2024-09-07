@@ -54,7 +54,7 @@ async def user_info(request: Request):
 async def all_users(
     request: Request,
     search: str = Query(None, description="Search string for username"),
-    last_id: Optional[str] = Query(None, description="Last user ID for pagination"),
+    last_username: Optional[str] = Query(None, description="Last username for pagination"),
     limit: int = Query(20, description="Number of results to return", ge=1, le=100)
 ):
     verify_permissions(request, Roles.ADMIN)
@@ -71,14 +71,17 @@ async def all_users(
     if Roles.ADMIN not in user_roles and Roles.MOD not in user_roles:
         raise HTTPException(status_code=403, detail={"error": "Insufficient permissions"})
 
-    print(f"Fetched {limit} users for {request.state.user_id} from {search}:{last_id}")
+    if last_username in ('null', 'undefined', ''):
+        last_username = None
+    
     users = await fetch_users(
         request.state.db,
         search=search,
-        last_id=last_id,
+        last_username=last_username,
         limit=limit)
     
     total_users = await total_user_count(request.state.db)
+    filtered_users_total = await total_user_count(request.state.db, search=search)
     
     if len(users) == 0:
         user = await get_user_from_discord(request.state.db, search)
@@ -93,14 +96,15 @@ async def all_users(
     for user in users:
         user.update({ 'roles': users_roles.get(user['id'], None) })
         
-    next_id = users[-1]['id'] if users else None
+    last_username = users[-1]['username'] if users else None
 
     return JSONResponse(
         status_code=200,
         content={
             'users': users,
+            'filtered_total': filtered_users_total,
             'total': total_users,
-            'last_id': next_id,
+            'last_username': last_username,
         })
 
 @router.get("/roles")

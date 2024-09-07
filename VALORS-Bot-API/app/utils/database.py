@@ -40,13 +40,17 @@ async def get_user(db: AsyncSession, user_id: int):
     result = await db.execute(query)
     return result.scalars().first()
 
-async def total_user_count(db: AsyncSession) -> int:
-    return (await db.execute(func.count(Users.id))).scalar()
+async def total_user_count(db: AsyncSession, search: Optional[str]=None) -> int:
+    query = select(func.count(Users.id))
+    if search:
+        query = query.where(Users.username.ilike(f"%{search}%"))
+    result = await db.execute(query)
+    return result.scalar()
 
 async def fetch_users(
     db: AsyncSession,
     search: str = "",
-    last_id: str = None,
+    last_username: str = None,
     limit: int = 20
 ) -> List[Dict[str, Any]]:
     query = (
@@ -57,8 +61,8 @@ async def fetch_users(
     if search:
         query = query.where(Users.username.ilike(f"%{search}%"))
 
-    if last_id not in (None, ''):
-        query = query.where(Users.id > int(last_id))
+    if last_username is not None:
+        query = query.where(Users.username > last_username)
 
     query = query.limit(limit)
 
