@@ -4,6 +4,7 @@ from config import config
 from fastapi import Request
 from fastapi.responses import JSONResponse
 from ..services.sessions import SessionManager
+from ..utils.database import get_user_roles
 
 from starlette.middleware.base import BaseHTTPMiddleware
 
@@ -24,6 +25,8 @@ class SessionTokenMiddleware(BaseHTTPMiddleware):
                 user_session = await SessionManager.fetch(session, token)
                 if not user_session:
                     return JSONResponse(status_code=401, content={"error": "Invalid User Session token"})
+                request.state.roles = await get_user_roles(session, user_session.user_id)
+                request.state.user_id = user_session.user_id
         return await call_next(request)
 
 

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Request, HTTPException, Query, Depends, Path
+from fastapi import APIRouter, Request, HTTPException, Query, Path
 from fastapi.responses import JSONResponse
 from typing import Optional
 from ..utils.database import (
@@ -13,28 +13,41 @@ from ..utils.database import (
     total_user_count
 )
 from ..services.login_session_manager import SessionManager
+from ..utils.utils import verify_permissions
 
 router = APIRouter()
 
+@router.get("/")
+async def user_info(request: Request, discord_user_id: int = Query(alias="id")):
+    verify_permissions(request, Roles.MOD, Roles.ADMIN)
+
+    response_data = {}
+    user = await get_user_from_discord(request.state.db, discord_user_id)
+    if user:
+        response_data.update({
+            "id": user.id, 
+            "discord_id": user.discord_id, 
+            "username": user.username, 
+            "email": user.email, 
+            "roles": [role.value for role in await get_user_roles(request.state.db, user.id)],
+            "is_active": user.is_active})
+    return JSONResponse(status_code=200, content={'user': response_data})
+
 @router.get("/me")
-async def user_info(request: Request, discord_user_id: int = Query(None, alias="user")):
+async def user_info(request: Request):
+    verify_permissions(request, Roles.USER)
+
+    response_data = {}
     session_token = request.headers.get('session-token', None)
-    session = await SessionManager.fetch(request.state.db, session_token)
-    if session_token:
-        if not session:
-            raise HTTPException(status_code=401, detail={"error": "Invalid session token"})
-        user = await get_user_from_session(request.state.db, session_token)
-    else:
-        user = await get_user_from_discord(request.state.db, discord_user_id)
-    
-    response_data = {
-        "id": user.id, 
-        "discord_id": user.discord_id, 
-        "username": user.username, 
-        "email": user.email, 
-        "roles": [role.value for role in await get_user_roles(request.state.db, user.id)],
-        "is_active": user.is_active
-    }
+    user = await get_user_from_session(request.state.db, session_token)
+    if user:
+        response_data.update({
+            "id": user.id, 
+            "discord_id": user.discord_id, 
+            "username": user.username, 
+            "email": user.email, 
+            "roles": [role.value for role in await get_user_roles(request.state.db, user.id)],
+            "is_active": user.is_active})
     return JSONResponse(status_code=200, content={'user': response_data})
 
 @router.get("/all")
@@ -45,6 +58,8 @@ async def all_users(
     last_username: Optional[str] = Query(None, description="Last username for pagination"),
     limit: int = Query(20, description="Number of results to return", ge=1, le=100)
 ):
+    verify_permissions(request, Roles.MOD, Roles.ADMIN)
+
     session_token = request.headers.get('session-token', None)
     if not session_token:
         raise HTTPException(status_code=401, detail={"error": "Missing User Session token"})
@@ -102,6 +117,8 @@ async def add_role(
     discord_user_id: int = Path(..., description="Discord user ID"),
     role: Roles = Path(..., description="Role to add")
 ):
+    verify_permissions(request, Roles.ADMIN, notselfcheck=discord_user_id)
+
     user = await get_user_from_discord(request.state.db, discord_user_id)
     if not user:
         raise HTTPException(status_code=404, detail={"error": "User not found"})
@@ -119,6 +136,8 @@ async def remove_role(
     discord_user_id: int = Path(..., description="Discord user ID"),
     role: Roles = Path(..., description="Role to remove")
 ):
+    verify_permissions(request, Roles.ADMIN, notselfcheck=discord_user_id)
+
     user = await get_user_from_discord(request.state.db, discord_user_id)
     if not user:
         raise HTTPException(status_code=404, detail={"error": "User not found"})
