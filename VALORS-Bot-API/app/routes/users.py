@@ -91,6 +91,7 @@ async def all_users(
                 "discord_id": user.discord_id,
                 "username": user.username
             })
+            filtered_users_total = 1
     
     users_roles = await get_users_roles(request.state.db, [u['id'] for u in users])
     for user in users:
