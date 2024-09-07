@@ -47,7 +47,6 @@ async def fetch_users(
     db: AsyncSession,
     search: str = "",
     last_id: str = None,
-    last_username: str = None,
     limit: int = 20
 ) -> List[Dict[str, Any]]:
     query = (
@@ -58,10 +57,8 @@ async def fetch_users(
     if search:
         query = query.where(Users.username.ilike(f"%{search}%"))
 
-    if last_id not in (None, '') and last_username not in (None, ''):
-        query = query.where(
-            (Users.username > last_username) |
-            ((Users.username == last_username) & (Users.id > int(last_id))))
+    if last_id not in (None, ''):
+        query = query.where(Users.id > int(last_id))
 
     query = query.limit(limit)
 
