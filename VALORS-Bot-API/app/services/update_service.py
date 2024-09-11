@@ -23,6 +23,7 @@ async def handle_update(request: Request):
     script = 'update.sh' if update_type == 'regular' else 'force_update.sh'
     if write_to_pipe_with_timeout('/hostpipe/apipipe', script):
         log.info(f"{update_type.upper()} UPDATE called successfully")
+        log.info(f"sent by: {request.headers.get('x-forwarded-for', -1)}")
         return JSONResponse(content={'status': f'{update_type.capitalize()} Update initiated successfully'}, status_code=200)
     
     log.error(f"{update_type.upper()} UPDATE failed")
