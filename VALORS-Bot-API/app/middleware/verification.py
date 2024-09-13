@@ -13,7 +13,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 class SessionTokenMiddleware(BaseHTTPMiddleware):
     def __init__(self, app, whitelist_patterns):
         super().__init__(app)
-        self.whitelist_patterns = whitelist_patterns
+        self.whitelist_patterns = [re.compile(pattern) for pattern in whitelist_patterns]
     
     async def dispatch(self, request: Request, call_next):
         if any(pattern.match(request.url.path) for pattern in self.whitelist_patterns):
@@ -33,7 +33,7 @@ class SessionTokenMiddleware(BaseHTTPMiddleware):
 class AuthorizationTokenMiddleware(BaseHTTPMiddleware):
     def __init__(self, app, whitelist_patterns):
         super().__init__(app)
-        self.whitelist_patterns = whitelist_patterns
+        self.whitelist_patterns = [re.compile(pattern) for pattern in whitelist_patterns]
     
     async def dispatch(self, request: Request, call_next):
         if any(pattern.match(request.url.path) for pattern in self.whitelist_patterns):
