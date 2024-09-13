@@ -1,4 +1,5 @@
 import hmac
+import re
 
 from config import config
 from fastapi import Request
@@ -15,8 +16,7 @@ class SessionTokenMiddleware(BaseHTTPMiddleware):
         self.whitelist_paths = whitelist_paths
     
     async def dispatch(self, request: Request, call_next):
-        path = request.url.path
-        if any(path.startswith(whitelisted) for whitelisted in self.whitelist_paths):
+        if any(pattern.match(request.url.path) for pattern in self.whitelist_patterns):
             token = request.headers.get('session-token', None)
             if not token:
                 return JSONResponse(status_code=401, content={"error": "Missing User Session token"})
@@ -36,8 +36,7 @@ class AuthorizationTokenMiddleware(BaseHTTPMiddleware):
         self.whitelist_paths = whitelist_paths
     
     async def dispatch(self, request: Request, call_next):
-        path = request.url.path
-        if any(path.startswith(whitelisted) for whitelisted in self.whitelist_paths):
+        if any(pattern.match(request.url.path) for pattern in self.whitelist_patterns):
             auth_header = request.headers.get('Authorization')
             if not auth_header:
                 return JSONResponse(status_code=401, content={"error": "Missing Authorization header"})
