@@ -11,7 +11,8 @@ from sqlalchemy import (
     Float,
     ForeignKeyConstraint,
     MetaData,
-    Enum as sq_Enum
+    Enum as sq_Enum,
+    Index
 )
 from sqlalchemy.orm import relationship, declarative_base
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
@@ -123,7 +124,7 @@ class Users(Base):
     is_active = Column(Boolean, default=True)
 
     roles = relationship("UserRoles", back_populates="user")
-    sessions = relationship("Session", back_populates="user")
+    sessions = relationship("Sessions", back_populates="user")
 
 class UserRoles(Base):
     __tablename__ = 'user_roles'
@@ -134,7 +135,66 @@ class UserRoles(Base):
 
     user = relationship("Users", back_populates="roles")
 
-class Session(Base):
+class Teams(Base):
+    __tablename__ = "teams"
+    __table_args__ = {"schema": "valors_league"}
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String, nullable=False)
+    bio = Column(String, nullable=True)
+    color1 = Column(String, nullable=True)
+    color2 = Column(String, nullable=True)
+    logo_url = Column(String, nullable=True)
+    display_trophy = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    disbanded_at = Column(DateTime(timezone=True), nullable=True)
+
+    users = relationship("TeamUsers", back_populates="team")
+
+class TeamUsers(Base):
+    __tablename__ = "team_users"
+    __table_args__ = {"schema": "valors_league"}
+
+    id = Column(Integer, primary_key=True)
+    team_id = Column(Integer, ForeignKey("valors_league.teams.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("valors_league.users.id"), nullable=False)
+    timestamp = Column(DateTime(timezone=True), server_default=func.now())
+    left_at = Column(DateTime(timezone=True), nullable=True)
+
+    team = relationship("Teams", back_populates="users")
+
+class TeamCaptains(Base):
+    __tablename__ = "team_captains"
+    __table_args__ = {"schema": "valors_league"}
+
+    id = Column(Integer, primary_key=True)
+    team_id = Column(Integer, ForeignKey("valors_league.teams.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("valors_league.users.id"), nullable=False)
+    timestamp = Column(DateTime(timezone=True), server_default=func.now())
+    revoked_at = Column(DateTime(timezone=True), nullable=True, default=None)
+
+class TeamCoCaptains(Base):
+    __tablename__ = "team_co_captains"
+    __table_args__ = {"schema": "valors_league"}
+
+    id = Column(Integer, primary_key=True)
+    team_id = Column(Integer, ForeignKey("valors_league.teams.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("valors_league.users.id"), nullable=False)
+    timestamp = Column(DateTime(timezone=True), server_default=func.now())
+    revoked_at = Column(DateTime(timezone=True), nullable=True, default=None)
+
+class TeamJoinRequests(Base):
+    __tablename__ = "team_join_requests"
+    __table_args__ = {"schema": "valors_league"}
+
+    id = Column(Integer, primary_key=True)
+    team_id = Column(Integer, ForeignKey("valors_league.teams.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("valors_league.users.id"), nullable=False)
+    timestamp = Column(DateTime(timezone=True), server_default=func.now())
+    declined_at = Column(DateTime(timezone=True), nullable=True, default=None)
+    accepted_at = Column(DateTime(timezone=True), nullable=True, default=None)
+
+class Sessions(Base):
     __tablename__ = 'sessions'
     __table_args__ = {'schema': 'valors_league'}
 

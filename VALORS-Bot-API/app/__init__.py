@@ -36,12 +36,12 @@ def create_app() -> FastAPI:
     # Add Authorization Middleware
     app.add_middleware(AuthorizationTokenMiddleware, 
         whitelist_paths=[
-            "/user", "/session", "/guild", "/matchmaking"])
+            "/user", "/team", "/session", "/guild", "/matchmaking"])
 
     # Add Session Token Middleware
     app.add_middleware(SessionTokenMiddleware, 
         whitelist_paths=[
-            "/user", "/session/check"])
+            "/user", "/team", "/session/check"])
     
     # Initialize Redis
     app.redis_db = aioredis.from_url(f"redis://{config.REDIS_HOST}:{config.REDIS_PORT}", decode_responses=True)

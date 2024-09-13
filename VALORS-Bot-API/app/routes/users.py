@@ -9,7 +9,7 @@ from ..utils.database import (
     add_user_role, 
     remove_user_role,
     Roles,
-    fetch_users,
+    get_users,
     total_user_count
 )
 from ..services.login_session_manager import SessionManager
@@ -74,7 +74,7 @@ async def all_users(
     if last_username in ('null', 'undefined', ''):
         last_username = None
     
-    users = await fetch_users(
+    users = await get_users(
         request.state.db,
         search=search,
         last_username=last_username,

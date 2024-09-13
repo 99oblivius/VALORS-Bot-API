@@ -2,7 +2,7 @@ from typing import List, Dict, Any, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import joinedload
-from sqlalchemy import desc, delete, desc
+from sqlalchemy import desc, delete, desc, update, and_
 from ..models import MMBotUserSummaryStats, MMBotRanks, Users, Roles
 
 from ..models import *
@@ -47,7 +47,7 @@ async def total_user_count(db: AsyncSession, search: Optional[str]=None) -> int:
     result = await db.execute(query)
     return result.scalar()
 
-async def fetch_users(
+async def get_users(
     db: AsyncSession,
     search: str = "",
     last_username: str = None,
@@ -129,7 +129,7 @@ async def get_users_roles(db: AsyncSession, user_ids: List[int]) -> Dict[int, Li
     return user_roles
 
 async def get_user_from_session(db: AsyncSession, session_token: str) -> Optional[Users]:
-    query = select(Session).options(joinedload(Session.user)).where(Session.session_token == session_token)
+    query = select(Sessions).options(joinedload(Sessions.user)).where(Sessions.session_token == session_token)
     result = await db.execute(query)
     session = result.scalar_one_or_none()
     return session.user if session else None
@@ -195,3 +195,150 @@ async def get_match_making_leaderboard(db: AsyncSession, guild_id: int) -> List[
         }
         for row in result
     ]
+
+async def get_team(db: AsyncSession, team_id: int) -> Optional[Teams]:
+    query = select(Teams).where(Teams.id == team_id)
+    result = await db.execute(query)
+    return result.scalars().first()
+
+async def update_team(db: AsyncSession, team_id: int, team_data: dict) -> Optional[Dict[str, Any]]:
+    query = (
+        update(Teams)
+        .where(Teams.id == team_id)
+        .values(**team_data)
+        .returning(Teams))
+    result = await db.execute(query)
+    await db.commit()
+    updated_team = result.fetchone()
+    if updated_team:
+        return {
+            "id": updated_team.id,
+            "name": updated_team.name,
+            "bio": updated_team.bio,
+            "color1": updated_team.color1,
+            "color2": updated_team.color2,
+            "logo_url": updated_team.logo_url,
+            "display_trophy": updated_team.display_trophy,
+            "created_at": updated_team.created_at,
+            "disbanded_at": updated_team.disbanded_at
+        }
+    return None
+
+async def fetch_teams(
+    db: AsyncSession,
+    search: str = "",
+    last_team_name: str = None,
+    limit: int = 20
+) -> List[Teams]:
+    query = select(Teams).order_by(Teams.name)
+
+    if search:
+        query = query.where(Teams.name.ilike(f"%{search}%"))
+
+    if last_team_name is not None:
+        query = query.where(Teams.name > last_team_name)
+
+    query = query.limit(limit)
+
+    result = await db.execute(query)
+    return result.scalars().all()
+
+async def total_team_count(db: AsyncSession, search: Optional[str] = None) -> int:
+    query = select(func.count(Teams.id))
+    if search:
+        query = query.where(Teams.name.ilike(f"%{search}%"))
+    result = await db.execute(query)
+    return result.scalar()
+
+async def get_team_members(db: AsyncSession, team_id: int) -> List[Dict[str, Any]]:
+    query = (
+        select(
+            Users.id,
+            Users.discord_id,
+            Users.username,
+            TeamUsers.timestamp.label('joined_at'))
+        .join(TeamUsers, and_(
+            Users.id == TeamUsers.user_id,
+            TeamUsers.team_id == team_id,
+            TeamUsers.left_at.is_(None)))
+        .order_by(TeamUsers.timestamp))
+    result = await db.execute(query)
+    members = result.all()
+
+    return [
+        {
+            "id": member.id,
+            "discord_id": member.discord_id,
+            "username": member.username,
+            "joined_at": member.joined_at.isoformat() if member.joined_at else None
+        } for member in members
+    ]
+
+async def add_team_member(db: AsyncSession, team_id: int, user_id: int) -> bool:
+    new_member = TeamUsers(team_id=team_id, user_id=user_id)
+    db.add(new_member)
+    try:
+        await db.commit()
+        return True
+    except Exception:
+        await db.rollback()
+        return False
+
+async def remove_team_member(db: AsyncSession, team_id: int, user_id: int) -> bool:
+    query = update(TeamUsers).where(
+        TeamUsers.team_id == team_id,
+        TeamUsers.user_id == user_id,
+        TeamUsers.left_at.is_(None)
+    ).values(left_at=func.now())
+    result = await db.execute(query)
+    await db.commit()
+    return result.rowcount > 0
+
+async def create_join_request(db: AsyncSession, team_id: int, user_id: int) -> Optional[TeamJoinRequests]:
+    new_request = TeamJoinRequests(team_id=team_id, user_id=user_id)
+    db.add(new_request)
+    await db.commit()
+    await db.refresh(new_request)
+    return new_request
+
+async def get_team_join_requests(db: AsyncSession, team_id: int) -> List[TeamJoinRequests]:
+    query = select(TeamJoinRequests).where(
+        TeamJoinRequests.team_id == team_id,
+        TeamJoinRequests.accepted_at.is_(None),
+        TeamJoinRequests.declined_at.is_(None))
+    result = await db.execute(query)
+    return result.scalars().all()
+
+async def process_join_request(db: AsyncSession, request_id: int, accept: bool) -> Optional[TeamJoinRequests]:
+    query = select(TeamJoinRequests).where(TeamJoinRequests.id == request_id)
+    result = await db.execute(query)
+    join_request = result.scalar_one_or_none()
+    
+    if join_request:
+        if accept:
+            join_request.accepted_at = func.now()
+            await add_team_member(db, join_request.team_id, join_request.user_id)
+        else:
+            join_request.declined_at = func.now()
+        
+        await db.commit()
+        await db.refresh(join_request)
+    
+    return join_request
+
+async def is_team_captain(db: AsyncSession, team_id: int, user_id: int) -> bool:
+    query = select(TeamCaptains).where(
+        TeamCaptains.team_id == team_id,
+        TeamCaptains.user_id == user_id,
+        TeamCaptains.revoked_at.is_(None))
+    result = await db.execute(query)
+    return result.scalar_one_or_none() is not None
+
+async def is_team_co_captain(db: AsyncSession, team_id: int, user_id: int) -> bool:
+    query = select(TeamCoCaptains).where(
+        TeamCoCaptains.team_id == team_id,
+        TeamCoCaptains.user_id == user_id,
+        TeamCoCaptains.revoked_at.is_(None))
+    result = await db.execute(query)
+    return result.scalar_one_or_none() is not None
+

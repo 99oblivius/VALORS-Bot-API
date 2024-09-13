@@ -5,12 +5,14 @@ from .auth import router as auth_router
 from .match_making import router as mm_router
 from .discord import router as guild_router
 from .users import router as user_router
+from .teams import router as teams_router
 
 router = APIRouter()
 
 def init_routes(app):
     router.include_router(auth_router, prefix="/session", tags=["authentication"])
     router.include_router(user_router, prefix="/user", tags=["user"])
+    router.include_router(teams_router, prefix="/team", tags=["team"])
     router.include_router(guild_router, prefix="/guild", tags=["discord"])
     router.include_router(mm_router, prefix="/matchmaking", tags=["matchmaking"])
 
