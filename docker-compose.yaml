@@ -15,6 +15,7 @@ services:
     volumes:
       - ./VALORS-Bot-API/app:/srv/app
       - ./VALORS-Bot-API/pipe:/hostpipe
+      - /var/www/cdn:/cdn
   
   valorsbot:
     image: valorsbot
