@@ -157,8 +157,6 @@ async def get_user_platform_mapping(db: AsyncSession, discord_uuid: str, platfor
     return result.scalars().first()
 
 async def update_user_platform_mapping(db: AsyncSession, mapping: UserPlatformMappings, guild_id: int, discord_uuid: str, platform: Platform, user_id_str: str) -> UserPlatformMappings:
-    log = logging.getLogger(__name__)
-
     if not mapping:
         new_mapping = UserPlatformMappings(
             guild_id=guild_id, 
@@ -169,13 +167,11 @@ async def update_user_platform_mapping(db: AsyncSession, mapping: UserPlatformMa
         db.add(new_mapping)
         await db.commit()
         await db.refresh(new_mapping)
-        log.info(f"New mapping added: {new_mapping}")
         return new_mapping
     else:
         mapping.platform_id = user_id_str
         await db.commit()
         await db.refresh(mapping)
-        log.info(f"Mapping updated: {mapping}")
         return mapping
 
 async def get_match_making_leaderboard(db: AsyncSession, guild_id: int) -> List[Dict[str, Any]]:
