@@ -13,7 +13,7 @@ class DiscordClient(nextcord.Client):
         if self.guild:
             log.info(f'Logged in as {self.user.name} (ID: {self.user.id}) at {datetime.now()}')
         else:
-            log.warning(f"Warning: Guild with ID {config.DISCORD_GUILD_ID} not found")
+            log.warning(f"Logged in as {self.user.name} (ID: {self.user.id}) but Warning: Guild with ID {config.DISCORD_GUILD_ID} not found")
     
     async def process_application_commands(*args):
         pass

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Request, HTTPException, Query, Path, Body
+from fastapi import APIRouter, Request, HTTPException, Query, Path, Body, File, UploadFile
 from fastapi.responses import JSONResponse
 from typing import Optional, List
 from ..utils.database import (
@@ -43,10 +43,11 @@ async def team_info(request: Request, team_id: int = Query(alias="id")):
 async def update_team_info(
     request: Request,
     team_id: int = Query(..., alias="id"),
-    team_data: dict = Body(...)
+    team_data: dict = Body(...),
+    logo_file: UploadFile = File(None)
 ):
     try:
-        updated_team = await update_team(request.state.db, team_id, team_data)
+        updated_team = await update_team(request.state.db, team_id, team_data, logo_file)
         if updated_team:
             return JSONResponse(status_code=200, content={'message': 'Team updated successfully', 'team': updated_team})
         else:

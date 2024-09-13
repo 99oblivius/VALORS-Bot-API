@@ -1,9 +1,13 @@
 from typing import List, Dict, Any, Optional
+from fastapi import UploadFile
+import os
+import uuid
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import joinedload
 from sqlalchemy import desc, delete, desc, update, and_
 from ..models import MMBotUserSummaryStats, MMBotRanks, Users, Roles
+from config import config
 
 from ..models import *
 
@@ -201,14 +205,34 @@ async def get_team(db: AsyncSession, team_id: int) -> Optional[Teams]:
     result = await db.execute(query)
     return result.scalars().first()
 
-async def update_team(db: AsyncSession, team_id: int, team_data: dict) -> Optional[Dict[str, Any]]:
+async def update_team(
+    db: AsyncSession, 
+    team_id: int, 
+    team_data: dict, 
+    logo_file: UploadFile = None
+) -> Optional[Dict[str, Any]]:
+    if logo_file:
+        file_extension = os.path.splitext(logo_file.filename)[1]
+        unique_filename = f"{uuid.uuid4()}{file_extension}"
+
+        os.makedirs(config.UPLOAD_DIR, exist_ok=True)
+        
+        file_path = os.path.join(config.UPLOAD_DIR, unique_filename)
+        with open(file_path, "wb") as buffer:
+            content = await logo_file.read()
+            buffer.write(content)
+        
+        team_data['logo_url'] = f"{config.CDN_BASE_URL}/{unique_filename}"
+
     query = (
         update(Teams)
         .where(Teams.id == team_id)
         .values(**team_data)
-        .returning(Teams))
+        .returning(Teams)
+    )
     result = await db.execute(query)
     await db.commit()
+
     updated_team = result.fetchone()
     if updated_team:
         return {
