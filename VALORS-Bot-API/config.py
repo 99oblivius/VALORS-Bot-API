@@ -25,4 +25,6 @@ class Config:
     UPLOAD_DIR            = os.getenv('UPLOAD_DIR', '/cdn')
     CDN_BASE_URL          = os.getenv('CDN_BASE_URL', 'http://localhost')
 
+    DISCORD_DEFAULT_PFP   = "https://discord.com/assets/6debd47ed13483642cf09e832ed0bc1b.png"
+
 config = Config()
