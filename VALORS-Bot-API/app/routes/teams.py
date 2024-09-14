@@ -13,7 +13,8 @@ from ..utils.database import (
     is_team_captain,
     is_team_co_captain,
     get_user_from_session,
-    remove_team_member
+    remove_team_member,
+    get_team_members
 )
 from ..utils.utils import verify_permissions
 
@@ -38,7 +39,7 @@ async def team_info(request: Request, team_id: int = Query(alias="id")):
     return JSONResponse(status_code=200, content={'team': response_data})
 
 @router.put("/update")
-async def update_team_info(
+async def update_info(
     request: Request,
     team_id: int = Query(..., alias="id"),
     team_data: dict = Body(...),
@@ -96,8 +97,19 @@ async def all_teams(
             'last_team_name': last_team_name,
         })
 
+@router.get("/{team_id}/members")
+async def get_members(
+    request: Request,
+    team_id: int = Path(..., description="Team ID"),
+):
+    team = await get_team(request.state.db, team_id)
+    if not team:
+        raise HTTPException(status_code=404, detail="Team not found")
+    members = await get_team_members(request.state.db, team_id)
+    return JSONResponse(status_code=200, content={'members': members})
+
 @router.post("/join-request")
-async def create_team_join_request(
+async def create_join_request(
     request: Request,
     team_id: int = Query(..., description="ID of the team to join")
 ):
@@ -108,7 +120,7 @@ async def create_team_join_request(
         raise HTTPException(status_code=400, detail=f"Failed to create join request: {str(e)}")
 
 @router.get("/{team_id}/join-requests")
-async def list_team_join_requests(
+async def list_join_requests(
     request: Request,
     team_id: int = Path(..., description="ID of the team")
 ):
@@ -121,7 +133,7 @@ async def list_team_join_requests(
     return JSONResponse(status_code=200, content={'join_requests': [{'id': jr.id, 'user_id': jr.user_id, 'timestamp': jr.timestamp} for jr in join_requests]})
 
 @router.post("/join-request/{request_id}/process")
-async def process_team_join_request(
+async def process_join_request(
     request: Request,
     request_id: int = Path(..., description="ID of the join request"),
     accept: bool = Query(..., description="Whether to accept or decline the request")
@@ -138,7 +150,7 @@ async def process_team_join_request(
     return JSONResponse(status_code=200, content={'message': f'Join request {action} successfully'})
 
 @router.post("/{team_id}/kick/{user_id}")
-async def kick_user_from_team(
+async def kick_user(
     request: Request,
     team_id: int = Path(..., description="ID of the team"),
     user_id: int = Path(..., description="ID of the user to kick")
