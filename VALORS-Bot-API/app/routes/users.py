@@ -11,7 +11,8 @@ from ..utils.database import (
     remove_user_role,
     Roles,
     get_users,
-    total_user_count
+    total_user_count,
+    get_user_team
 )
 from ..services.login_session_manager import SessionManager
 from ..utils.utils import verify_permissions
@@ -22,6 +23,7 @@ router = APIRouter()
 async def user_info(
     request: Request,
     discord_user_id: int = Query(alias="id"),
+    show_team: bool = Query(False, alias="team", description="Include team information"),
 ):
     user = await get_user_from_discord(request.state.db, discord_user_id)
     if not user:
@@ -32,13 +34,17 @@ async def user_info(
 
     roles = await get_user_roles(request.state.db, user.id)
     
-    data = {
+    response_data = {
         "id": user.id,
         "discord_id": user.discord_id,
         "username": user.username,
         "avatar": avatar,
         "roles": [role.value for role in roles],
     }
+
+    if show_team:
+        team = await get_user_team(request.state.db, user.id)
+        response_data["team"] = team
 
     token = request.headers.get('session-token', None)
     if token:
@@ -48,20 +54,28 @@ async def user_info(
 
         roles = await get_user_roles(request.state.db, user_session.user_id)
         if Roles.ADMIN in roles:
-            data.update({
+            response_data.update({
                 "email": user.email,
                 "is_active": user.is_active
             })
 
-    return JSONResponse(status_code=200, content={'user': data})
+    return JSONResponse(status_code=200, content={'user': response_data})
 
 @router.get("/me")
-async def user_info(request: Request):
+async def user_info(
+    request: Request, 
+    show_team: bool = Query(False, alias="team", description="Include team information")
+):
     verify_permissions(request, Roles.USER)
 
     response_data = {}
     session_token = request.headers.get('session-token', None)
+
     user = await get_user_from_session(request.state.db, session_token)
+    if show_team:
+        team = await get_user_team(request.state.db, user.id)
+        response_data["team"] = team
+    
     if user:
         response_data.update({
             "id": user.id, 
@@ -80,18 +94,6 @@ async def all_users(
     limit: int = Query(20, description="Number of results to return", ge=1, le=100)
 ):
     verify_permissions(request, Roles.ADMIN)
-
-    session_token = request.headers.get('session-token', None)
-    if not session_token:
-        raise HTTPException(status_code=401, detail={"error": "Missing User Session token"})
-
-    session = await SessionManager.fetch(request.state.db, session_token)
-    if not session:
-        raise HTTPException(status_code=401, detail={"error": "Invalid User Session token"})
-    current_user = await get_user_from_session(request.state.db, session_token)
-    user_roles = await get_user_roles(request.state.db, current_user.id)
-    if Roles.ADMIN not in user_roles and Roles.MOD not in user_roles:
-        raise HTTPException(status_code=403, detail={"error": "Insufficient permissions"})
 
     if last_username in ('null', 'undefined', ''):
         last_username = None
@@ -117,6 +119,7 @@ async def all_users(
     
     users_roles = await get_users_roles(request.state.db, [u['id'] for u in users])
     for user in users:
+        user.pop('email')
         user.update({ 'roles': users_roles.get(user['id'], None) })
         
     last_username = users[-1]['username'] if users else None

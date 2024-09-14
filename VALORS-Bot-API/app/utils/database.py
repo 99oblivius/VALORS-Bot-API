@@ -366,3 +366,22 @@ async def is_team_co_captain(db: AsyncSession, team_id: int, user_id: int) -> bo
     result = await db.execute(query)
     return result.scalar_one_or_none() is not None
 
+async def get_user_team(db: AsyncSession, user_id: int) -> Optional[Dict[str, Any]]:
+    query = (
+        select(Teams, TeamUsers.timestamp.label('joined_at'))
+        .join(TeamUsers, and_(
+            Teams.id == TeamUsers.team_id,
+            TeamUsers.user_id == user_id,
+            TeamUsers.left_at.is_(None))))
+    result = await db.execute(query)
+    team_data = result.first()
+    
+    if team_data:
+        team, joined_at = team_data
+        return {
+            "id": team.id,
+            "name": team.name,
+            "logo_url": team.logo_url,
+            "joined_at": joined_at
+        }
+    return None
