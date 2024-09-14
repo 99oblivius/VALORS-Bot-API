@@ -21,8 +21,6 @@ router = APIRouter()
 
 @router.get("/")
 async def team_info(request: Request, team_id: int = Query(alias="id")):
-    verify_permissions(request, Roles.MOD, Roles.ADMIN)
-
     response_data = {}
     team = await get_team(request.state.db, team_id)
     if team:

@@ -46,7 +46,10 @@ def create_app() -> FastAPI:
     # Add Session Token Middleware
     app.add_middleware(SessionTokenMiddleware, 
         whitelist_patterns=[
-            r"^/user",
+            r"^/user/me",
+            r"^/user/roles",
+            r"^/user/all",
+            r"^/user/\d+",
             
             r"^/team/update",
             r"^/team/join-request",

@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Request, HTTPException, Query, Path
 from fastapi.responses import JSONResponse
 from typing import Optional
+from ..discord import get_client
 from ..utils.database import (
     get_user_roles, 
     get_users_roles, 
@@ -18,20 +19,41 @@ from ..utils.utils import verify_permissions
 router = APIRouter()
 
 @router.get("/")
-async def user_info(request: Request, discord_user_id: int = Query(alias="id")):
-    verify_permissions(request, Roles.MOD, Roles.ADMIN)
-
-    response_data = {}
+async def user_info(
+    request: Request,
+    discord_user_id: int = Query(alias="id"),
+):
     user = await get_user_from_discord(request.state.db, discord_user_id)
-    if user:
-        response_data.update({
-            "id": user.id, 
-            "discord_id": user.discord_id, 
-            "username": user.username, 
-            "email": user.email, 
-            "roles": [role.value for role in await get_user_roles(request.state.db, user.id)],
-            "is_active": user.is_active})
-    return JSONResponse(status_code=200, content={'user': response_data})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    client = get_client()
+    avatar = await client.get_avatar_url(request.app.redis_db, discord_user_id)
+
+    roles = await get_user_roles(request.state.db, user.id)
+    
+    data = {
+        "id": user.id,
+        "discord_id": user.discord_id,
+        "username": user.username,
+        "avatar": avatar,
+        "roles": [role.value for role in roles],
+    }
+
+    token = request.headers.get('session-token', None)
+    if token:
+        user_session = await SessionManager.fetch(request.state.db, token)
+        if not user_session:
+            raise HTTPException(status_code=401, detail="Invalid session token")
+
+        roles = await get_user_roles(request.state.db, user_session.user_id)
+        if Roles.ADMIN in roles:
+            data.update({
+                "email": user.email,
+                "is_active": user.is_active
+            })
+
+    return JSONResponse(status_code=200, content={'user': data})
 
 @router.get("/me")
 async def user_info(request: Request):
