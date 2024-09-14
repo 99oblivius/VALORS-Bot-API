@@ -5,10 +5,9 @@ from urllib.parse import urlparse, urlencode, parse_qs, urlunparse
 def verify_permissions(request, *requirements, notselfcheck: Optional[Union[int]]=None):
     if notselfcheck and str(notselfcheck) == str(request.state.user_id):
         raise HTTPException(status_code=403, detail={"error": "Forbidden"})
-
-    for role in requirements:
-        if role not in request.state.roles:
-            raise HTTPException(status_code=403, detail={"error": "Insufficient permissions"})
+    
+    if not any(True for user_role in request.state.roles if user_role in requirements):
+        raise HTTPException(status_code=403, detail={"error": "Insufficient permissions"})
 
 def resize_image_url(url: str, size: int=64):
     parsed_url = urlparse(url)
