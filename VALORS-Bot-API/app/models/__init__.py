@@ -146,7 +146,8 @@ class Teams(Base):
     color2 = Column(String, nullable=True)
     logo_url = Column(String, nullable=True)
     display_trophy = Column(String, nullable=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    verified = Column(Boolean, default=False)
+    timestamp = Column(DateTime(timezone=True), server_default=func.now())
     disbanded_at = Column(DateTime(timezone=True), nullable=True)
 
     users = relationship("TeamUsers", back_populates="team")

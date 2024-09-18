@@ -12,7 +12,7 @@ from ..utils.database import (
     Roles,
     get_users,
     total_user_count,
-    get_user_team
+    get_user_team,
 )
 from ..services.login_session_manager import SessionManager
 from ..utils.utils import verify_permissions

@@ -51,10 +51,7 @@ def create_app() -> FastAPI:
             r"^/user/all",
             r"^/user/\d+",
             
-            r"^/team/update",
-            r"^/team/join-request",
             r"^/team/",
-            r"^/team/\d+/kick",
             
             r"^/session/check"
         ])

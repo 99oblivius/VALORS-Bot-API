@@ -7,14 +7,19 @@ from ..utils.database import (
     fetch_teams,
     total_team_count,
     Roles,
-    create_join_request,
+    join_request,
     get_team_join_requests,
     process_join_request,
     is_team_captain,
     is_team_co_captain,
+    is_user_in_team,
     get_user_from_session,
     remove_team_member,
-    get_team_members
+    get_team_members,
+    get_active_teams,
+    create_team,
+    total_team_count,
+    disband_team
 )
 from ..utils.utils import verify_permissions
 
@@ -33,7 +38,7 @@ async def team_info(request: Request, team_id: int = Query(alias="id")):
             "color2": team.color2,
             "logo_url": team.logo_url,
             "display_trophy": team.display_trophy,
-            "created_at": team.created_at,
+            "timestamp": team.timestamp.isoformat(),
             "disbanded_at": team.disbanded_at
         })
     return JSONResponse(status_code=200, content={'team': response_data})
@@ -82,7 +87,7 @@ async def all_teams(
         "color2": team.color2,
         "logo_url": team.logo_url,
         "display_trophy": team.display_trophy,
-        "created_at": team.created_at,
+        "timestamp": team.timestamp.isoformat(),
         "disbanded_at": team.disbanded_at
     } for team in teams]
         
@@ -113,11 +118,11 @@ async def create_join_request(
     request: Request,
     team_id: int = Query(..., description="ID of the team to join")
 ):
-    try:
-        join_request = await create_join_request(request.state.db, team_id, request.state.user_id)
-        return JSONResponse(status_code=200, content={'message': 'Join request created successfully', 'request_id': join_request.id})
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Failed to create join request: {str(e)}")
+    if await is_user_in_team(request.state.db, request.state.user_id):
+        raise HTTPException(status_code=403, detail="You cannot request as long as you are in a team")
+    
+    request = await join_request(request.state.db, team_id, request.state.user_id)
+    return JSONResponse(status_code=200, content={'message': 'Join request created successfully', 'request_id': request.id})
 
 @router.get("/{team_id}/join-requests")
 async def list_join_requests(
@@ -130,10 +135,10 @@ async def list_join_requests(
         raise HTTPException(status_code=403, detail="You must be a team captain or co-captain to view join requests")
     
     join_requests = await get_team_join_requests(request.state.db, team_id)
-    return JSONResponse(status_code=200, content={'join_requests': [{'id': jr.id, 'user_id': jr.user_id, 'timestamp': jr.timestamp} for jr in join_requests]})
+    return JSONResponse(status_code=200, content={'join_requests': [{'id': jr.id, 'user_id': jr.user_id, 'timestamp': jr.timestamp.isoformat()} for jr in join_requests]})
 
 @router.post("/join-request/{request_id}/process")
-async def process_join_request(
+async def process_join(
     request: Request,
     request_id: int = Path(..., description="ID of the join request"),
     accept: bool = Query(..., description="Whether to accept or decline the request")
@@ -171,3 +176,77 @@ async def kick_user(
         return JSONResponse(status_code=200, content={'message': 'User successfully kicked from the team'})
     else:
         raise HTTPException(status_code=404, detail="User not found in the team or already left")
+
+@router.post("/create")
+async def create_new(
+    request: Request,
+    team_data: dict = Body(..., description="Team data including name, bio, colors, etc.")
+):
+    verify_permissions(request, Roles.USER)
+    
+    if await is_user_in_team(request.state.db, request.state.user_id):
+        raise HTTPException(status_code=401, detail="A team member cannot create a team")
+    
+    if 'name' not in team_data:
+        raise HTTPException(status_code=401, detail="A team must have a name")
+
+    new_team = await create_team(request.state.db, team_data, request.state.user_id)
+    return JSONResponse(status_code=201, content={'team': {
+        'id': new_team.id,
+        'name': new_team.name,
+        'timestamp': new_team.timestamp.isoformat()
+    }})
+
+@router.delete("/{team_id}")
+async def disband_existing_team(
+    request: Request,
+    team_id: int = Path(..., description="Team ID to disband")
+):
+    verify_permissions(request, Roles.USER)
+    
+    if not await is_team_captain(request.state.db, team_id, request.state.user_id):
+        raise HTTPException(status_code=403, detail="Only team captains can disband a team")
+    
+    if await disband_team(request.state.db, team_id):
+        return JSONResponse(status_code=200, content={'message': 'Team successfully disbanded'})
+    else:
+        raise HTTPException(status_code=404, detail="Team not found or already disbanded")
+
+@router.get("/all")
+async def list_active_teams(
+    request: Request,
+    search: str = Query(None, description="Search string for team name"),
+    last_team_name: Optional[str] = Query(None, description="Last team name for pagination"),
+    limit: int = Query(20, description="Number of results to return", ge=1, le=100)
+):
+    verify_permissions(request, Roles.USER)
+
+    if last_team_name in ('null', 'undefined', ''):
+        last_team_name = None
+    
+    teams = await get_active_teams(
+        request.state.db,
+        search=search,
+        last_team_name=last_team_name,
+        limit=limit)
+    
+    total_teams = await total_team_count(request.state.db)
+    filtered_teams_total = await total_team_count(request.state.db, search=search)
+    
+    teams_data = [{
+        'id': team.id,
+        'name': team.name,
+        'logo_url': team.logo_url,
+        'timestamp': team.timestamp.isoformat()
+    } for team in teams]
+        
+    last_team_name = teams[-1].name if teams else None
+
+    return JSONResponse(
+        status_code=200,
+        content={
+            'teams': teams_data,
+            'filtered_total': filtered_teams_total,
+            'total': total_teams,
+            'last_team_name': last_team_name,
+        })

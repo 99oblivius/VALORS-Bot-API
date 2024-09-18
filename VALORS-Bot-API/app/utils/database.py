@@ -1,11 +1,12 @@
 from typing import List, Dict, Any, Optional
 from fastapi import UploadFile
 import os
+from datetime import datetime
 import uuid
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import joinedload
-from sqlalchemy import desc, delete, desc, update, and_
+from sqlalchemy import desc, delete, desc, update, and_, insert, exists
 from ..models import MMBotUserSummaryStats, MMBotRanks, Users, Roles
 from config import config
 
@@ -318,7 +319,7 @@ async def remove_team_member(db: AsyncSession, team_id: int, user_id: int) -> bo
     await db.commit()
     return result.rowcount > 0
 
-async def create_join_request(db: AsyncSession, team_id: int, user_id: int) -> Optional[TeamJoinRequests]:
+async def join_request(db: AsyncSession, team_id: int, user_id: int) -> Optional[TeamJoinRequests]:
     new_request = TeamJoinRequests(team_id=team_id, user_id=user_id)
     db.add(new_request)
     await db.commit()
@@ -366,6 +367,13 @@ async def is_team_co_captain(db: AsyncSession, team_id: int, user_id: int) -> bo
     result = await db.execute(query)
     return result.scalar_one_or_none() is not None
 
+async def is_user_in_team(db: AsyncSession, user_id: int) -> bool:
+    query = select(exists().where(
+        (TeamUsers.user_id == user_id) & 
+        (TeamUsers.left_at.is_(None))))
+    result = await db.execute(query)
+    return result.scalar()
+
 async def get_user_team(db: AsyncSession, user_id: int) -> Optional[Dict[str, Any]]:
     query = (
         select(Teams, TeamUsers.timestamp.label('joined_at'))
@@ -385,3 +393,54 @@ async def get_user_team(db: AsyncSession, user_id: int) -> Optional[Dict[str, An
             "joined_at": joined_at
         }
     return None
+
+async def create_team(db: AsyncSession, team_data: dict, creator_id: int) -> Teams:
+    stmt = insert(Teams).values(**team_data).returning(Teams)
+    result = await db.execute(stmt)
+    team = result.scalar()
+
+    await add_team_member(db, team.id, creator_id)
+    await add_team_captain(db, team.id, creator_id)
+
+    await db.commit()
+    return team
+
+async def disband_team(db: AsyncSession, team_id: int) -> bool:
+    stmt = (
+        update(Teams)
+        .where(Teams.id == team_id)
+        .values(disbanded_at=datetime.utcnow())
+        .returning(Teams.id)
+    )
+    result = await db.execute(stmt)
+    await db.commit()
+    return result.scalar_one_or_none() is not None
+
+async def add_team_captain(db: AsyncSession, team_id: int, user_id: int) -> bool:
+    new_captain = TeamCaptains(team_id=team_id, user_id=user_id)
+    db.add(new_captain)
+    try:
+        await db.commit()
+        return True
+    except Exception:
+        await db.rollback()
+        return False
+
+async def get_active_teams(
+    db: AsyncSession,
+    search: str = "",
+    last_team_name: str = None,
+    limit: int = 20
+) -> List[Teams]:
+    query = select(Teams).where(Teams.disbanded_at.is_(None)).order_by(Teams.name)
+
+    if search:
+        query = query.where(Teams.name.ilike(f"%{search}%"))
+
+    if last_team_name is not None:
+        query = query.where(Teams.name > last_team_name)
+
+    query = query.limit(limit)
+
+    result = await db.execute(query)
+    return result.scalars().all()
