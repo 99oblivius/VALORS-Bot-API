@@ -1,5 +1,6 @@
 #!/bin/bash
 set -e
+UPDATE_IP="$1"
 
 cd /srv/ValorsLeague/bot/VALORS-Match-Making-Bot
 
@@ -28,7 +29,8 @@ if git status -uno | grep -q 'Your branch is behind'; then
     fi
     
     echo "valorsbot updated successfully."
-    date >> /srv/ValorsLeague/VALORS-Bot-API/last_update.txt
+    echo "$(date) | $UPDATE_IP | Regular" >> /srv/ValorsLeague/VALORS-Bot-API/last_update.txt
 else
     echo "No updates found for valorsbot. Skipping."
+    echo "$(date) | $UPDATE_IP | Regular | No update" >> /srv/ValorsLeague/VALORS-Bot-API/last_update.txt
 fi

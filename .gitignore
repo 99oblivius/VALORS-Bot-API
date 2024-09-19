@@ -2,6 +2,7 @@ db/
 dozzle-data/
 pgadmin-data/
 
+last_update.txt
 log.txt
 
 # Byte-compiled / optimized / DLL files

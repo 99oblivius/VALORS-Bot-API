@@ -9,11 +9,16 @@ log() {
 }
 
 while true; do
-    if read -r script_name; then
+    if read -r command; then
+        read -ra cmd_parts <<< "$command"
+        
+        script_name="${cmd_parts[0]}"
         full_path="$SCRIPT_DIR/$script_name"
-        if [[ "$full_path" == "$SCRIPT_DIR"/*.sh && -f "$full_path" && -x "$full_path" ]]; then
-            log "Executing: $full_path"
-            if output=$("$full_path" 2>&1); then
+        
+        if [[ "$full_path" == "$SCRIPT_DIR"/*.sh && -f "$full_path" && -x "$full_path" && ! "$script_name" == *"/"* ]]; then
+            log "Executing: $command"
+            unset "cmd_parts[0]"
+            if output=$("$full_path" "${cmd_parts[@]}" 2>&1); then
                 log "Script executed successfully"
                 echo "$output" >> "$LOG"
             else

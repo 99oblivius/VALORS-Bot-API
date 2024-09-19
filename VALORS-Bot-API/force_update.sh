@@ -1,5 +1,6 @@
 #!/bin/bash
 set -e
+UPDATE_IP="$1"
 
 cd /srv/ValorsLeague/bot/VALORS-Match-Making-Bot
 
@@ -27,4 +28,4 @@ else
 fi
 
 echo "valorsbot forcibly updated successfully."
-date >> /srv/ValorsLeague/VALORS-Bot-API/last_update.txt
+echo "$(date) | $UPDATE_IP | Force update" >> /srv/ValorsLeague/VALORS-Bot-API/last_update.txt
