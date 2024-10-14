@@ -32,6 +32,7 @@ services:
   
   valorsdb:
     image: postgres:latest
+    container_name: valorsdb
     restart: always
     environment:
       POSTGRES_USER: valorsuser
