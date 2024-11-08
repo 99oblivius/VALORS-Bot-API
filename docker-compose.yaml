@@ -46,7 +46,7 @@ services:
     container_name: pgadmin4_valors
     restart: always
     environment:
-      PGADMIN_DEFAULT_EMAIL: 99dark.oblivion99@gmail.com
+      PGADMIN_DEFAULT_EMAIL: projects@oblivius.dev
       PGADMIN_DEFAULT_PASSWORD: valorspassword
     ports:
       - "9592:80"
