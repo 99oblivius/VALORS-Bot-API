@@ -41,6 +41,17 @@ services:
     volumes:
       - ./db/ValorsDB:/var/lib/postgresql/data
   
+  # devvalorsdb:
+  #   image: postgres:latest
+  #   container_name: devvalorsdb
+  #   restart: always
+  #   environment:
+  #     POSTGRES_USER: valorsuser
+  #     POSTGRES_PASSWORD: valorspassword
+  #     POSTGRES_DB: valorsdb
+  #   ports:
+  #     - "5430:5432"
+  
   pgadmin:
     image: dpage/pgadmin4:latest
     container_name: pgadmin4_valors

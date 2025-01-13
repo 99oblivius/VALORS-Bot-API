@@ -9,7 +9,7 @@ WORKDIR /bot
 
 RUN pip install uv
 COPY VALORS-Match-Making-Bot/requirements.txt requirements.txt
-RUN /root/.cargo/bin/uv pip install --system --no-cache -r requirements.txt
+RUN uv pip install --system --no-cache -r requirements.txt
 
 COPY VALORS-Match-Making-Bot/ .
 
