@@ -10,17 +10,19 @@ def verify_permissions(request, *requirements, notselfcheck: Optional[Union[int]
         raise HTTPException(status_code=403, detail={"error": "Insufficient permissions"})
 
 def resize_image_url(url: str, size: int=64):
-    parsed_url = urlparse(url)
-    query_params = parse_qs(parsed_url.query)
-    query_params['size'] = [str(size)]
-    new_query = urlencode(query_params, doseq=True)
-    new_url = urlunparse((
-        parsed_url.scheme,
-        parsed_url.netloc,
-        parsed_url.path,
-        parsed_url.params,
-        new_query,
-        parsed_url.fragment
-    ))
-    
+    try:
+        parsed_url = urlparse(url)
+        query_params = parse_qs(parsed_url.query)
+        query_params['size'] = [str(size)]
+        new_query = urlencode(query_params, doseq=True)
+        new_url = urlunparse((
+            parsed_url.scheme,
+            parsed_url.netloc,
+            parsed_url.path,
+            parsed_url.params,
+            new_query,
+            parsed_url.fragment
+        ))
+    except Exception:
+        return url
     return new_url

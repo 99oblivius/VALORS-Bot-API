@@ -33,7 +33,7 @@ async def get_commands(request: Request):
 class MemberRank(BaseModel):
     name: str
     color: str
-    url: str
+    url: Optional[str]
 
 class Member(BaseModel):
     id: str
@@ -65,7 +65,7 @@ def process_member(member, ranks):
         mm_rank=MemberRank(
             name=rank.name,
             color=f'{rank.color}',
-            url=resize_image_url(rank.icon.url, 24)
+            url=resize_image_url(rank.icon.url, 24) if rank.icon else None
         ) if rank else None,
         is_bot=member.bot
     )
