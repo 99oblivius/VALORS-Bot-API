@@ -1,0 +1,13 @@
+module default {
+    scalar type Snowflake extending int64;
+    
+    type Settings {
+        required guild_id: Snowflake {
+            constraint exclusive;
+        }
+
+        updated_at: datetime {
+            rewrite insert, update using (datetime_of_statement());
+        }
+    }
+}

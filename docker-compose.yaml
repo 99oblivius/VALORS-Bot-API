@@ -30,6 +30,15 @@ services:
     volumes:
       - ./bot/VALORS-Match-Making-Bot/alembic/versions:/bot/alembic/versions
   
+  pmmcrossplay:
+    image: pmmcrossplaybot
+    build: ./crossplay
+    restart: always
+    env_file:
+      - ./.gelenv
+    depends_on:
+      - pmmcrossplaydb
+  
   valorsdb:
     image: postgres:latest
     container_name: valorsdb
@@ -40,6 +49,20 @@ services:
       POSTGRES_DB: valorsdb
     volumes:
       - ./db/ValorsDB:/var/lib/postgresql/data
+  
+  pmmcrossplaydb:
+    image: pmmcrossplaydb
+    build: ./Database
+    env_file:
+      - ./.gelenv
+    volumes:
+      - ./db/pmm:/var/lib/gel/data
+      - ./crossplay/dbschema:/dbschema
+    expose:
+      - 9956
+    ports:
+      - 9956:9956
+    restart: unless-stopped
   
   # devvalorsdb:
   #   image: postgres:latest
