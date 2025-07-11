@@ -34,8 +34,6 @@ services:
     image: pmmcrossplaybot
     build: ./crossplay
     restart: always
-    env_file:
-      - ./.gelenv
     depends_on:
       - pmmcrossplaydb
   
@@ -54,14 +52,12 @@ services:
     image: pmmcrossplaydb
     build: ./Database
     env_file:
-      - ./.gelenv
+      - ./Database/gel.env
     volumes:
       - ./db/pmm:/var/lib/gel/data
-      - ./crossplay/dbschema:/dbschema
-    expose:
-      - 9956
+      - ./Database/dbschema:/dbschema
     ports:
-      - 9956:9956
+      - "9956:9956"
     restart: unless-stopped
   
   # devvalorsdb:
