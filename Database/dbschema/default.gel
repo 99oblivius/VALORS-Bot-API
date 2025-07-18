@@ -1,13 +1,78 @@
 module default {
     scalar type Snowflake extending int64;
-    
-    type Settings {
-        required guild_id: Snowflake {
-            constraint exclusive;
-        }
+    scalar type MatchId extending sequence;
 
+    abstract type Timestamped {
+        created_at: datetime {
+            rewrite insert using (datetime_of_statement());
+        }
         updated_at: datetime {
             rewrite insert, update using (datetime_of_statement());
         }
+    }
+    
+    type Guild extending Timestamped {
+        guild_id: Snowflake {
+            constraint exclusive;
+        }
+
+        scores_channel_id: Snowflake;
+        queue_channel_id: Snowflake;
+        staff_role_id: Snowflake;
+
+        maps := .<guild[is Map];
+    }
+
+    type Player extending Timestamped {
+        required discord_id: Snowflake {
+            constraint exclusive;
+        }
+
+        captain_volunteer: bool { default := false; }
+
+        mmr: float64 { default := 0; }
+        games_played: int64  { default := 0; }
+        games_won: int64  { default := 0; }
+        rounds_won: int64  { default := 0; }
+    }
+
+    type Map extending Timestamped {
+        guild: Guild;
+        required name: str;
+        constraint exclusive on ((.guild, .name));
+
+        `order`: int64;
+
+        required enabled: bool { default := true; }
+
+        required image_url: str;
+    }
+
+    type `Match` extending Timestamped {
+        num: MatchId {
+            constraint exclusive;
+        }
+
+        required guild: Guild;
+
+        map: Map;
+
+        teamA_captain: Player;
+        teamB_captain: Player;
+        teamA_score: int16;
+        teamB_score: int16;
+
+        multi teamA_players: Player;
+        multi teamB_players: Player;
+        
+        ended_ts: datetime;
+    }
+
+    type MapVote extending Timestamped {
+        required `match`: `Match`;
+        required player: Player;
+        constraint exclusive on ((.`match`, .player));
+
+        required map: Map;
     }
 }

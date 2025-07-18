@@ -6,5 +6,6 @@ source "${SCRIPT_DIR}/utils/export_envs.sh" GEL
 
 cd "${SCRIPT_DIR}/.."
 gel --tls-security insecure migration extract || exit 1
+gel --tls-security insecure migration create --non-interactive --allow-unsafe || exit 1
 gel --tls-security insecure migration apply --dev-mode || exit 1
 echo "Migration complete"
