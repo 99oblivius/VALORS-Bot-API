@@ -2,7 +2,6 @@ FROM geldata/gel:7.0-alpha.1
 
 WORKDIR /
 
-COPY dbschema dbschema
 COPY queries queries
 
 COPY gel.toml gel.toml

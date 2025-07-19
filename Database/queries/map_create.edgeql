@@ -14,6 +14,7 @@ select (
     else (
         update Map set {
             `order` := new_order,
+            enabled := true,
             image_url := image_url
         }
     )
